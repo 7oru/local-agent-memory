@@ -20,8 +20,8 @@ experiments. It is not a multi-user SaaS, a cloud sync service, or a secret stor
   and `session:<id>`.
 - Separates pinned memory from searchable memory.
 - Preserves provenance fields such as source, confidence, status, and timestamps.
-- Provides CLI commands for add, search, list, pin, unpin, update, delete, serve,
-  export, and MCP.
+- Provides CLI for init, serve, add, search, pin, unpin, update, delete, export,
+  and MCP.
 - Serves a local HTTP API and minimal review UI.
 - Exposes MCP tools for compatible agents.
 

@@ -112,3 +112,9 @@
 - [x] `memory_get_pinned(scope: "global")` no longer returns the unpinned memory
 - [x] `lam pin <id>` changes the memory back to `pinned` and writes a `pinned` audit event
 - [x] `PATCH /memories/{id}` and `memory_update(id, { "status": "active" })` use the same core service path as `lam unpin`
+
+## Session Review Improvements
+
+- [x] Improve Web UI smoothness for long review transcripts with table snippets, quick add, Enter search, and busy state
+- [ ] Improve memory accuracy for imported/external-review provenance
+- [ ] Improve search/list performance for large memory content

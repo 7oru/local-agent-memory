@@ -126,6 +126,26 @@ def index_html() -> str:
     .toolbar input {
       max-width: 260px;
     }
+    .quick-add {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .quick-add textarea {
+      min-height: 74px;
+    }
+    .inline-check {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 0;
+    }
+    .inline-check input {
+      width: auto;
+    }
     .tab {
       display: none;
     }
@@ -134,6 +154,7 @@ def index_html() -> str:
     }
     table {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
       background: var(--panel);
       border: 1px solid var(--line);
@@ -159,6 +180,12 @@ def index_html() -> str:
     .content-cell {
       max-width: 520px;
       overflow-wrap: anywhere;
+    }
+    .content-snippet {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
     .status {
       display: inline-block;
@@ -243,6 +270,18 @@ def index_html() -> str:
         </table>
       </section>
       <section class="tab" id="tab-search">
+        <div class="quick-add">
+          <label><span>Add Memory</span><textarea id="new-content" placeholder="Memory content"></textarea></label>
+          <div class="form-grid">
+            <label><span>Scope</span><input id="new-scope" value="global"></label>
+            <label><span>Kind</span><input id="new-kind" value="note"></label>
+          </div>
+          <div class="form-grid">
+            <label><span>Source ref</span><input id="new-source-ref"></label>
+            <label class="inline-check"><input id="new-pin" type="checkbox"> Pin</label>
+            <button class="primary" id="add-memory">Add</button>
+          </div>
+        </div>
         <div class="toolbar">
           <input id="search-query" placeholder="Search" aria-label="Search query">
           <input id="search-scope" value="global" aria-label="Search scope">
@@ -327,10 +366,24 @@ def index_html() -> str:
       $("notice").textContent = text || "";
     }
 
+    function setBusy(isBusy, message = "") {
+      document.body.setAttribute("aria-busy", String(isBusy));
+      document.querySelectorAll("button").forEach((button) => {
+        button.disabled = isBusy;
+      });
+      if (message) notice(message);
+    }
+
     function escapeHtml(value) {
       return String(value ?? "").replace(/[&<>"']/g, (char) => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
       }[char]));
+    }
+
+    function snippet(value, maxLength = 260) {
+      const normalized = String(value ?? "").replace(/\\s+/g, " ").trim();
+      if (normalized.length <= maxLength) return normalized;
+      return `${normalized.slice(0, maxLength - 1)}...`;
     }
 
     async function api(path, options = {}) {
@@ -354,7 +407,7 @@ def index_html() -> str:
           <td>${escapeHtml(memory.scope)}</td>
           <td>${escapeHtml(memory.source_kind)} ${escapeHtml(memory.source_ref || "")}</td>
           ${includeStatus ? "" : `<td>${escapeHtml(memory.updated_at)}</td>`}
-          <td class="content-cell">${escapeHtml(memory.content)}</td>
+          <td class="content-cell"><div class="content-snippet">${escapeHtml(snippet(memory.content))}</div></td>
         </tr>
       `).join("");
       target.querySelectorAll("tr").forEach((row) => {
@@ -370,15 +423,42 @@ def index_html() -> str:
     }
 
     async function runSearch() {
+      setBusy(true, "Searching...");
       const payload = {
         query: $("search-query").value,
         scope: $("search-scope").value || null,
         status: $("search-status").value || null,
         include_inactive: Boolean($("search-status").value)
       };
-      const rows = await api("/search", { method: "POST", body: JSON.stringify(payload) });
-      renderRows($("search-body"), rows, true);
-      notice(`${rows.length} results`);
+      try {
+        const rows = await api("/search", { method: "POST", body: JSON.stringify(payload) });
+        renderRows($("search-body"), rows, true);
+        notice(`${rows.length} results`);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function addMemory() {
+      setBusy(true, "Adding...");
+      const payload = {
+        content: $("new-content").value,
+        scope: $("new-scope").value || "global",
+        kind: $("new-kind").value || "note",
+        source_ref: $("new-source-ref").value || null,
+        pin: $("new-pin").checked
+      };
+      try {
+        const memory = await api("/memories", { method: "POST", body: JSON.stringify(payload) });
+        $("new-content").value = "";
+        $("new-source-ref").value = "";
+        $("new-pin").checked = false;
+        await loadMemory(memory.id);
+        await refreshCurrent();
+        notice(`added ${memory.id}`);
+      } finally {
+        setBusy(false);
+      }
     }
 
     async function loadMemory(id) {
@@ -473,6 +553,15 @@ def index_html() -> str:
     });
     $("refresh-pinned").addEventListener("click", () => loadPinned().catch((error) => notice(error.message)));
     $("run-search").addEventListener("click", () => runSearch().catch((error) => notice(error.message)));
+    $("add-memory").addEventListener("click", () => addMemory().catch((error) => {
+      setBusy(false);
+      notice(error.message);
+    }));
+    ["search-query", "search-scope"].forEach((id) => {
+      $(id).addEventListener("keydown", (event) => {
+        if (event.key === "Enter") runSearch().catch((error) => notice(error.message));
+      });
+    });
     $("save-memory").addEventListener("click", () => saveMemory().catch((error) => notice(error.message)));
     $("pin-memory").addEventListener("click", () => setStatus("pinned").catch((error) => notice(error.message)));
     $("unpin-memory").addEventListener("click", () => setStatus("active").catch((error) => notice(error.message)));

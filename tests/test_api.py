@@ -31,8 +31,10 @@ class ApiTests(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(200, response.status_code)
         html = response.text
-        for text in ("Pinned", "Search", "Settings", "Supersede", "mcpServers"):
+        for text in ("Pinned", "Search", "Settings", "Add Memory", "Supersede", "mcpServers"):
             self.assertIn(text, html)
+        self.assertIn("function snippet", html)
+        self.assertIn("aria-busy", html)
 
     def test_http_lifecycle_pin_get_pinned_unpin_and_repin(self) -> None:
         created_response = self.client.post(
