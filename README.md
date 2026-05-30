@@ -87,6 +87,19 @@ uv run lam search "SQLite backend" --scope project:local-agent-memory
 uv run lam export --format json > local-agent-memory-export.json
 ```
 
+External review imports can preserve their real provenance instead of looking
+like ordinary CLI-authored notes:
+
+```bash
+uv run lam add "Kimi reviewer verdict: practical MVP ready" \
+  --scope project:local-agent-memory \
+  --kind task_state \
+  --source-kind import \
+  --source-ref "kimi-api:moonshot-v1-128k" \
+  --metadata model=moonshot-v1-128k \
+  --metadata rounds=5
+```
+
 ## Lightweight Local Deployment
 
 The default deployment target is a single-user service bound to loopback.

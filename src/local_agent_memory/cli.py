@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from .models import SOURCE_KINDS
 from .service import MemoryService, ServiceError
 from .storage import default_db_path
 
@@ -44,7 +45,9 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--scope", required=True)
     add.add_argument("--kind", default="note")
     add.add_argument("--confidence", type=float, default=1.0)
+    add.add_argument("--source-kind", choices=SOURCE_KINDS, default="cli")
     add.add_argument("--source-ref")
+    add.add_argument("--metadata", action="append", default=[], metavar="KEY=VALUE")
     add.add_argument("--tag", action="append", default=[])
     add.add_argument("--pin", action="store_true")
     add.add_argument("--json", action="store_true")
@@ -84,7 +87,9 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--kind")
     update.add_argument("--status")
     update.add_argument("--confidence", type=float)
+    update.add_argument("--source-kind", choices=SOURCE_KINDS)
     update.add_argument("--source-ref")
+    update.add_argument("--metadata", action="append", metavar="KEY=VALUE")
     update.add_argument("--tag", action="append")
     update.add_argument("--json", action="store_true")
     update.set_defaults(handler=_cmd_update)
@@ -122,9 +127,10 @@ def _cmd_add(args: argparse.Namespace, service: MemoryService) -> int:
         scope=args.scope,
         kind=args.kind,
         confidence=args.confidence,
-        source_kind="cli",
+        source_kind=args.source_kind,
         source_ref=args.source_ref,
         tags=args.tag,
+        metadata=_parse_metadata(args.metadata),
         pin=args.pin,
         actor="cli",
     )
@@ -173,8 +179,14 @@ def _cmd_update(args: argparse.Namespace, service: MemoryService) -> int:
         value = getattr(args, field)
         if value is not None:
             patch[field] = value
-    if args.source_ref is not None:
-        patch["source_ref"] = args.source_ref
+    for field in ("source_kind", "source_ref"):
+        value = getattr(args, field)
+        if value is not None:
+            patch[field] = value
+    if args.metadata is not None:
+        metadata = dict(service.get_memory(args.id).metadata)
+        metadata.update(_parse_metadata(args.metadata))
+        patch["metadata"] = metadata
     if args.tag is not None:
         patch["tags"] = args.tag
     memory = service.update_memory(args.id, patch, actor="cli")
@@ -248,3 +260,23 @@ def _cell(value: Any) -> str:
     if value is None:
         return ""
     return str(value).replace("\n", " ")
+
+
+def _parse_metadata(items: list[str] | None) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    for item in items or []:
+        if "=" not in item:
+            raise ServiceError("metadata must use KEY=VALUE")
+        key, raw_value = item.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise ServiceError("metadata key is required")
+        metadata[key] = _parse_metadata_value(raw_value)
+    return metadata
+
+
+def _parse_metadata_value(value: str) -> Any:
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return value

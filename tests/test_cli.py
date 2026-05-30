@@ -89,6 +89,50 @@ class CliTests(unittest.TestCase):
         self.assertEqual(created["id"], exported["memories"][0]["id"])
         self.assertTrue(exported["events"])
 
+    def test_cli_can_record_imported_review_provenance_and_metadata(self) -> None:
+        created = json.loads(
+            self.run_cli(
+                [
+                    "add",
+                    "Kimi reviewer verdict: practical MVP ready",
+                    "--scope",
+                    "project:local-agent-memory",
+                    "--kind",
+                    "task_state",
+                    "--source-kind",
+                    "import",
+                    "--source-ref",
+                    "kimi-api:moonshot-v1-128k",
+                    "--metadata",
+                    "model=moonshot-v1-128k",
+                    "--metadata",
+                    "rounds=5",
+                    "--json",
+                ]
+            )
+        )
+
+        self.assertEqual("import", created["source_kind"])
+        self.assertEqual("moonshot-v1-128k", created["metadata"]["model"])
+        self.assertEqual(5, created["metadata"]["rounds"])
+
+        updated = json.loads(
+            self.run_cli(
+                [
+                    "update",
+                    created["id"],
+                    "--source-kind",
+                    "manual",
+                    "--metadata",
+                    "verified=true",
+                    "--json",
+                ]
+            )
+        )
+        self.assertEqual("manual", updated["source_kind"])
+        self.assertEqual("moonshot-v1-128k", updated["metadata"]["model"])
+        self.assertTrue(updated["metadata"]["verified"])
+
 
 if __name__ == "__main__":
     unittest.main()
