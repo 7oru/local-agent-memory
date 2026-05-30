@@ -1,8 +1,9 @@
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
-from local_agent_memory.storage import InvalidTransitionError, MemoryRepository
+from local_agent_memory.storage import InvalidTransitionError, MemoryRepository, connect
 
 
 class StorageTests(unittest.TestCase):
@@ -86,6 +87,16 @@ class StorageTests(unittest.TestCase):
         )
         with self.assertRaises(InvalidTransitionError):
             self.repo.pin_memory(expired.id)
+
+    def test_initialize_creates_lookup_indexes(self) -> None:
+        with closing(connect(self.db_path)) as connection:
+            rows = connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            ).fetchall()
+        index_names = {row["name"] for row in rows}
+        self.assertIn("idx_memories_scope_status_updated", index_names)
+        self.assertIn("idx_memories_status_updated", index_names)
+        self.assertIn("idx_memory_events_memory_id", index_names)
 
 
 if __name__ == "__main__":

@@ -94,6 +94,35 @@ class ApiTests(unittest.TestCase):
         self.assertEqual("deleted", export["memories"][0]["status"])
         self.assertIn("deleted", [event["event_type"] for event in export["events"]])
 
+    def test_http_search_can_return_limited_content_for_fast_tables(self) -> None:
+        long_content = "Kimi reviewer verdict: " + ("practical MVP ready " * 80)
+        created = self.client.post(
+            "/memories",
+            json={
+                "content": long_content,
+                "scope": "project:local-agent-memory",
+                "kind": "task_state",
+            },
+        ).json()
+
+        search_response = self.client.post(
+            "/search",
+            json={
+                "query": "Kimi practical MVP ready",
+                "scope": "project:local-agent-memory",
+                "content_limit": 80,
+            },
+        )
+        self.assertEqual(200, search_response.status_code)
+        result = search_response.json()[0]
+        self.assertEqual(created["id"], result["id"])
+        self.assertLessEqual(len(result["content"]), 80)
+        self.assertTrue(result["content_truncated"])
+        self.assertEqual(len(long_content.strip()), result["content_length"])
+
+        full = self.client.get(f"/memories/{created['id']}").json()
+        self.assertEqual(long_content.strip(), full["content"])
+
     def test_http_supersede_endpoint(self) -> None:
         created = self.client.post(
             "/memories",

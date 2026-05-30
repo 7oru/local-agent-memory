@@ -61,6 +61,15 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_memories_scope_status_updated
+ON memories(scope, status, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_memories_status_updated
+ON memories(status, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_memory_events_memory_id
+ON memory_events(memory_id, id);
 """
 
 FTS_SCHEMA = """

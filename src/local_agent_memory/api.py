@@ -46,6 +46,7 @@ class SearchRequest(BaseModel):
     status: str | None = None
     include_inactive: bool = False
     limit: int = 10
+    content_limit: int | None = Field(default=None, ge=1, le=20_000)
 
 
 class SupersedeRequest(BaseModel):
@@ -73,10 +74,11 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
         status: str | None = None,
         include_inactive: bool = False,
         limit: int = Query(100, ge=1, le=500),
+        content_limit: int | None = Query(None, ge=1, le=20_000),
     ) -> list[dict[str, Any]]:
         return _handle(
             lambda: [
-                memory.to_dict()
+                memory.to_dict(content_limit=content_limit)
                 for memory in service.list_memories(
                     scope=scope,
                     status=status,
@@ -133,7 +135,7 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     def search(payload: SearchRequest) -> list[dict[str, Any]]:
         return _handle(
             lambda: [
-                memory.to_dict()
+                memory.to_dict(content_limit=payload.content_limit)
                 for memory in service.search(
                     payload.query,
                     scope=payload.scope,
@@ -148,9 +150,13 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     def get_pinned(
         scope: str | None = None,
         limit: int = Query(100, ge=1, le=500),
+        content_limit: int | None = Query(None, ge=1, le=20_000),
     ) -> list[dict[str, Any]]:
         return _handle(
-            lambda: [memory.to_dict() for memory in service.get_pinned(scope=scope, limit=limit)]
+            lambda: [
+                memory.to_dict(content_limit=content_limit)
+                for memory in service.get_pinned(scope=scope, limit=limit)
+            ]
         )
 
     @app.get("/export")

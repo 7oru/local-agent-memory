@@ -117,4 +117,4 @@
 
 - [x] Improve Web UI smoothness for long review transcripts with table snippets, quick add, Enter search, and busy state
 - [x] Improve memory accuracy for imported/external-review provenance
-- [ ] Improve search/list performance for large memory content
+- [x] Improve search/list performance for large memory content

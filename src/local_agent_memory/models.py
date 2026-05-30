@@ -68,10 +68,15 @@ class Memory:
             score=float(row["score"]) if "score" in keys and row["score"] is not None else None,
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, *, content_limit: int | None = None) -> dict[str, Any]:
+        content = self.content
+        content_truncated = False
+        if content_limit is not None and len(content) > content_limit:
+            content = content[: max(content_limit - 1, 0)] + "…"
+            content_truncated = True
         data = {
             "id": self.id,
-            "content": self.content,
+            "content": content,
             "kind": self.kind,
             "scope": self.scope,
             "status": self.status,
@@ -86,6 +91,9 @@ class Memory:
             "tags": self.tags,
             "metadata": self.metadata,
         }
+        if content_limit is not None:
+            data["content_length"] = len(self.content)
+            data["content_truncated"] = content_truncated
         if self.score is not None:
             data["score"] = self.score
         return data

@@ -417,7 +417,7 @@ def index_html() -> str:
 
     async function loadPinned() {
       const scope = encodeURIComponent($("pinned-scope").value || "global");
-      const rows = await api(`/pinned?scope=${scope}`);
+      const rows = await api(`/pinned?scope=${scope}&content_limit=320`);
       renderRows($("pinned-body"), rows);
       notice(`${rows.length} pinned`);
     }
@@ -428,7 +428,8 @@ def index_html() -> str:
         query: $("search-query").value,
         scope: $("search-scope").value || null,
         status: $("search-status").value || null,
-        include_inactive: Boolean($("search-status").value)
+        include_inactive: Boolean($("search-status").value),
+        content_limit: 320
       };
       try {
         const rows = await api("/search", { method: "POST", body: JSON.stringify(payload) });
