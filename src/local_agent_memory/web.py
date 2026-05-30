@@ -68,7 +68,7 @@ def index_html() -> str:
     .shell {
       min-height: 100vh;
       display: grid;
-      grid-template-columns: 220px minmax(0, 1fr) minmax(420px, 32vw);
+      grid-template-columns: 220px minmax(0, 1fr) minmax(520px, 40vw);
     }
     .rail, .detail {
       background: #eef2f0;
@@ -222,8 +222,8 @@ def index_html() -> str:
       text-transform: uppercase;
     }
     .read-box {
-      min-height: 92px;
-      max-height: 220px;
+      min-height: 320px;
+      max-height: 46vh;
       overflow: auto;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
@@ -231,6 +231,13 @@ def index_html() -> str:
       border-radius: 6px;
       background: white;
       padding: 9px;
+    }
+    #detail-content {
+      height: 34vh;
+      min-height: 320px;
+      max-height: 46vh;
+      overflow: auto;
+      line-height: 1.5;
     }
     .kv-grid {
       display: grid;
@@ -636,8 +643,10 @@ def index_html() -> str:
       $("detail-heading-id").textContent = memory.id;
       $("detail-status-pill").textContent = memory.status;
       $("detail-content-preview").textContent = memory.content;
+      $("detail-content-preview").scrollTop = 0;
       $("detail-id").value = memory.id;
       $("detail-content").value = memory.content;
+      $("detail-content").scrollTop = 0;
       $("detail-kind").value = memory.kind;
       $("detail-scope").value = memory.scope;
       $("detail-status").value = memory.status;
