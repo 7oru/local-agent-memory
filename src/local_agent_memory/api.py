@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
@@ -60,8 +60,14 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     app = FastAPI(title="local-agent-memory", version=__version__)
     app.state.memory_service = service
 
-    @app.get("/", response_class=HTMLResponse)
-    def root() -> str:
+    @app.get("/")
+    def root() -> RedirectResponse:
+        return RedirectResponse("/app/pinned", status_code=307)
+
+    @app.get("/app/{view}", response_class=HTMLResponse)
+    def ui_view(view: str) -> str:
+        if view not in {"pinned", "search", "settings"}:
+            raise HTTPException(status_code=404, detail="unknown UI view")
         return index_html()
 
     @app.get("/health")

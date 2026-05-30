@@ -352,6 +352,11 @@ def index_html() -> str:
   <script>
     const state = { selected: null };
     const $ = (id) => document.getElementById(id);
+    const viewRoutes = {
+      pinned: "/app/pinned",
+      search: "/app/search",
+      settings: "/app/settings"
+    };
     const mcpConfig = {
       mcpServers: {
         "local-agent-memory": {
@@ -364,6 +369,39 @@ def index_html() -> str:
 
     function notice(text) {
       $("notice").textContent = text || "";
+    }
+
+    function viewFromPath(pathname = window.location.pathname) {
+      const matched = Object.entries(viewRoutes).find(([, path]) => path === pathname);
+      return matched ? matched[0] : "pinned";
+    }
+
+    function activateView(view, options = {}) {
+      const selectedView = viewRoutes[view] ? view : "pinned";
+      document.querySelectorAll("[data-tab-button]").forEach((item) => {
+        item.classList.toggle("active", item.dataset.tabButton === selectedView);
+      });
+      document.querySelectorAll(".tab").forEach((tab) => tab.classList.remove("active"));
+      $(`tab-${selectedView}`).classList.add("active");
+      $("view-title").textContent =
+        document.querySelector(`[data-tab-button="${selectedView}"]`).textContent;
+
+      if (options.push && window.location.pathname !== viewRoutes[selectedView]) {
+        history.pushState({ view: selectedView }, "", viewRoutes[selectedView]);
+      }
+      if (options.replace && window.location.pathname !== viewRoutes[selectedView]) {
+        history.replaceState({ view: selectedView }, "", viewRoutes[selectedView]);
+      }
+
+      if (selectedView === "pinned") {
+        loadPinned().catch((error) => notice(error.message));
+      }
+      if (selectedView === "search" && options.autoload !== false) {
+        runSearch().catch((error) => notice(error.message));
+      }
+      if (selectedView === "settings") {
+        loadSettings().catch((error) => notice(error.message));
+      }
     }
 
     function setBusy(isBusy, message = "") {
@@ -554,16 +592,9 @@ def index_html() -> str:
     }
 
     document.querySelectorAll("[data-tab-button]").forEach((button) => {
-      button.addEventListener("click", () => {
-        document.querySelectorAll("[data-tab-button]").forEach((item) => {
-          item.classList.toggle("active", item === button);
-        });
-        document.querySelectorAll(".tab").forEach((tab) => tab.classList.remove("active"));
-        $(`tab-${button.dataset.tabButton}`).classList.add("active");
-        $("view-title").textContent = button.textContent;
-        if (button.dataset.tabButton === "settings") loadSettings().catch((error) => notice(error.message));
-      });
+      button.addEventListener("click", () => activateView(button.dataset.tabButton, { push: true }));
     });
+    window.addEventListener("popstate", () => activateView(viewFromPath(), { autoload: true }));
     $("refresh-pinned").addEventListener("click", () => loadPinned().catch((error) => notice(error.message)));
     $("run-search").addEventListener("click", () => runSearch().catch((error) => notice(error.message)));
     $("add-memory").addEventListener("click", () => addMemory().catch((error) => {
@@ -582,7 +613,7 @@ def index_html() -> str:
     $("delete-memory").addEventListener("click", () => deleteMemory().catch((error) => notice(error.message)));
     $("supersede-memory").addEventListener("click", () => supersedeMemory().catch((error) => notice(error.message)));
     $("download-export").addEventListener("click", () => downloadExport().catch((error) => notice(error.message)));
-    loadPinned().catch((error) => notice(error.message));
+    activateView(viewFromPath(), { replace: true });
   </script>
 </body>
 </html>"""

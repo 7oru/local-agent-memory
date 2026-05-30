@@ -27,8 +27,13 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(200, response.status_code)
         self.assertTrue(response.json()["ok"])
 
+    def test_root_redirects_to_pinned_ui_route(self) -> None:
+        response = self.client.get("/", follow_redirects=False)
+        self.assertEqual(307, response.status_code)
+        self.assertEqual("/app/pinned", response.headers["location"])
+
     def test_web_ui_contains_core_surfaces(self) -> None:
-        response = self.client.get("/")
+        response = self.client.get("/app/search")
         self.assertEqual(200, response.status_code)
         html = response.text
         for text in ("Pinned", "Search", "Settings", "Add Memory", "Supersede", "mcpServers"):
@@ -37,6 +42,20 @@ class ApiTests(unittest.TestCase):
         self.assertIn("aria-busy", html)
         self.assertIn("/memories?", html)
         self.assertIn("Loading memories...", html)
+        self.assertIn("/app/pinned", html)
+        self.assertIn("/app/search", html)
+        self.assertIn("/app/settings", html)
+        self.assertIn("history.pushState", html)
+        self.assertIn("popstate", html)
+
+    def test_ui_routes_do_not_replace_api_routes(self) -> None:
+        self.assertEqual(200, self.client.get("/app/pinned").status_code)
+        self.assertEqual(200, self.client.get("/app/settings").status_code)
+        pinned_response = self.client.get("/pinned")
+        self.assertEqual(200, pinned_response.status_code)
+        self.assertEqual([], pinned_response.json())
+        missing_response = self.client.get("/app/unknown")
+        self.assertEqual(404, missing_response.status_code)
 
     def test_http_lifecycle_pin_get_pinned_unpin_and_repin(self) -> None:
         created_response = self.client.post(
