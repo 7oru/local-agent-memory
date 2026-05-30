@@ -5,9 +5,9 @@
 - [x] Write MVP spec
 - [x] Write architecture notes
 - [x] Write implementation task list
-- [ ] Choose package name and CLI binary name
-- [ ] Add project scaffold
-- [ ] Add formatting and test commands
+- [x] Choose package name and CLI binary name
+- [x] Add project scaffold
+- [x] Add formatting and test commands
 - [x] Add planning doc consistency check for pin/unpin MVP coverage
 
 ## M1: Core Storage
