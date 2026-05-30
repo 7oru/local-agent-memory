@@ -36,18 +36,18 @@
 
 ## M3: CLI
 
-- [ ] `lam init`
-- [ ] `lam add`
-- [ ] `lam search`
-- [ ] `lam list`
-- [ ] `lam pin <id>`
-- [ ] `lam unpin <id>`
-- [ ] `lam update`
-- [ ] `lam delete`
-- [ ] `lam export`
+- [x] `lam init`
+- [x] `lam add`
+- [x] `lam search`
+- [x] `lam list`
+- [x] `lam pin <id>`
+- [x] `lam unpin <id>`
+- [x] `lam update`
+- [x] `lam delete`
+- [x] `lam export`
 - [ ] `lam serve`
 - [ ] `lam mcp`
-- [ ] Add CLI lifecycle test: `lam add --pin`, `lam list --status pinned`, `lam unpin <id>`, `lam list --status pinned`, `lam pin <id>`
+- [x] Add CLI lifecycle test: `lam add --pin`, `lam list --status pinned`, `lam unpin <id>`, `lam list --status pinned`, `lam pin <id>`
 
 ## M4: HTTP API
 
