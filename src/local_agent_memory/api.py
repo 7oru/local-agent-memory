@@ -5,11 +5,13 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
 from .service import LifecycleError, MemoryService, NotFoundError, ServiceError, ValidationError
 from .storage import default_db_path
+from .web import index_html
 
 
 class MemoryCreate(BaseModel):
@@ -46,21 +48,20 @@ class SearchRequest(BaseModel):
     limit: int = 10
 
 
+class SupersedeRequest(BaseModel):
+    content: str
+    source_ref: str | None = None
+
+
 def create_app(db_path: str | Path | None = None) -> FastAPI:
     service = MemoryService(_resolve_db_path(db_path))
     service.initialize()
     app = FastAPI(title="local-agent-memory", version=__version__)
     app.state.memory_service = service
 
-    @app.get("/")
-    def root() -> dict[str, Any]:
-        return {
-            "name": "local-agent-memory",
-            "version": __version__,
-            "health": "/health",
-            "memories": "/memories",
-            "pinned": "/pinned",
-        }
+    @app.get("/", response_class=HTMLResponse)
+    def root() -> str:
+        return index_html()
 
     @app.get("/health")
     def health() -> dict[str, Any]:
@@ -116,6 +117,17 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     @app.delete("/memories/{memory_id}")
     def delete_memory(memory_id: str) -> dict[str, Any]:
         return _handle(lambda: service.delete_memory(memory_id, actor="api").to_dict())
+
+    @app.post("/memories/{memory_id}/supersede", status_code=201)
+    def supersede_memory(memory_id: str, payload: SupersedeRequest) -> dict[str, Any]:
+        return _handle(
+            lambda: service.supersede_memory(
+                memory_id,
+                payload.content,
+                actor="api",
+                source_ref=payload.source_ref,
+            ).to_dict()
+        )
 
     @app.post("/search")
     def search(payload: SearchRequest) -> list[dict[str, Any]]:

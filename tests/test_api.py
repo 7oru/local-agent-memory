@@ -27,6 +27,13 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(200, response.status_code)
         self.assertTrue(response.json()["ok"])
 
+    def test_web_ui_contains_core_surfaces(self) -> None:
+        response = self.client.get("/")
+        self.assertEqual(200, response.status_code)
+        html = response.text
+        for text in ("Pinned", "Search", "Settings", "Supersede", "mcpServers"):
+            self.assertIn(text, html)
+
     def test_http_lifecycle_pin_get_pinned_unpin_and_repin(self) -> None:
         created_response = self.client.post(
             "/memories",
@@ -84,6 +91,21 @@ class ApiTests(unittest.TestCase):
         export = self.client.get("/export").json()
         self.assertEqual("deleted", export["memories"][0]["status"])
         self.assertIn("deleted", [event["event_type"] for event in export["events"]])
+
+    def test_http_supersede_endpoint(self) -> None:
+        created = self.client.post(
+            "/memories",
+            json={"content": "OpenClaw 默认模型是旧模型", "scope": "project:openclaw"},
+        ).json()
+
+        new_response = self.client.post(
+            f"/memories/{created['id']}/supersede",
+            json={"content": "OpenClaw 默认模型是 minimax/MiniMax-M2.5"},
+        )
+        self.assertEqual(201, new_response.status_code)
+        self.assertEqual("active", new_response.json()["status"])
+        old = self.client.get(f"/memories/{created['id']}").json()
+        self.assertEqual("superseded", old["status"])
 
 
 if __name__ == "__main__":

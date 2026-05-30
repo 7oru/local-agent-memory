@@ -57,16 +57,29 @@ Out of scope for the first MVP:
 ## Local Usage
 
 ```bash
-uv sync --extra dev
-uv run lam init
+./scripts/dev-up.sh
 uv run lam add "用户偏好：个人 wiki 笔记默认写中文" --scope global --kind preference --pin
 uv run lam search "wiki 笔记"
 uv run lam serve
 uv run lam mcp
 ```
 
+From a fresh clone, this starts the HTTP API in one foreground command:
+
+```bash
+./scripts/dev-up.sh serve
+```
+
 The default database path is `~/.local-agent-memory/memory.db`. Set `LAM_DB_PATH` to use a
 different SQLite file.
+
+Export and reset:
+
+```bash
+uv run lam export --format json > local-agent-memory-export.json
+rm -f ~/.local-agent-memory/memory.db
+uv run lam init
+```
 
 ## MCP Config Examples
 

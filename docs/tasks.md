@@ -78,37 +78,37 @@
 
 ## M6: Minimal Web UI
 
-- [ ] Pinned memory list
-- [ ] Search with filters
-- [ ] Memory detail/edit panel
-- [ ] Delete/expire/supersede actions
-- [ ] Export button
-- [ ] MCP config snippet view
+- [x] Pinned memory list
+- [x] Search with filters
+- [x] Memory detail/edit panel
+- [x] Delete/expire/supersede actions
+- [x] Export button
+- [x] MCP config snippet view
 
 ## M7: One-Command Local Run
 
-- [ ] Add `scripts/dev-up.sh`
-- [ ] Add Docker Compose only if it simplifies the local path
-- [ ] Confirm fresh clone startup path
-- [ ] Document default database path
-- [ ] Document reset and export flow
+- [x] Add `scripts/dev-up.sh`
+- [x] Add Docker Compose only if it simplifies the local path
+- [x] Confirm fresh clone startup path
+- [x] Document default database path
+- [x] Document reset and export flow
 
 ## Definition of Done
 
-- [ ] Fresh clone can run the MVP locally
-- [ ] Data survives restart
-- [ ] CLI, HTTP, and MCP all use the same core service
-- [ ] Search returns source and timestamp
-- [ ] Pinned memory can be added, listed, unpinned, and returned through CLI, HTTP, and MCP
-- [ ] Delete and export are tested
-- [ ] README has copy-paste setup instructions
+- [x] Fresh clone can run the MVP locally
+- [x] Data survives restart
+- [x] CLI, HTTP, and MCP all use the same core service
+- [x] Search returns source and timestamp
+- [x] Pinned memory can be added, listed, unpinned, and returned through CLI, HTTP, and MCP
+- [x] Delete and export are tested
+- [x] README has copy-paste setup instructions
 
 ## Pin/Unpin Lifecycle Acceptance Path
 
-- [ ] `lam add "用户偏好：个人 wiki 笔记默认写中文" --scope global --kind preference --pin` creates a `pinned` memory with source and timestamps
-- [ ] `lam list --scope global --status pinned` lists the new memory
-- [ ] `memory_get_pinned(scope: "global")` returns the same memory with provenance fields
-- [ ] `lam unpin <id>` changes the memory back to `active` and writes an `unpinned` audit event
-- [ ] `memory_get_pinned(scope: "global")` no longer returns the unpinned memory
-- [ ] `lam pin <id>` changes the memory back to `pinned` and writes a `pinned` audit event
-- [ ] `PATCH /memories/{id}` and `memory_update(id, { "status": "active" })` use the same core service path as `lam unpin`
+- [x] `lam add "用户偏好：个人 wiki 笔记默认写中文" --scope global --kind preference --pin` creates a `pinned` memory with source and timestamps
+- [x] `lam list --scope global --status pinned` lists the new memory
+- [x] `memory_get_pinned(scope: "global")` returns the same memory with provenance fields
+- [x] `lam unpin <id>` changes the memory back to `active` and writes an `unpinned` audit event
+- [x] `memory_get_pinned(scope: "global")` no longer returns the unpinned memory
+- [x] `lam pin <id>` changes the memory back to `pinned` and writes a `pinned` audit event
+- [x] `PATCH /memories/{id}` and `memory_update(id, { "status": "active" })` use the same core service path as `lam unpin`
