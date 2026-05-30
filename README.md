@@ -1,89 +1,171 @@
 # local-agent-memory
 
-Local-first Agent Memory Manager.
+[中文](README.zh-CN.md) | English
 
-`local-agent-memory` is a local, auditable memory layer for AI agents. It is meant to run on a developer's machine with one command, expose memory through CLI / HTTP / MCP, and let the user inspect, correct, pin, expire, delete, and export what agents remember.
+Local-first Agent Memory Manager for personal agents.
 
-The project is intentionally not "just another RAG store". The MVP treats memory as governed agent state:
+`local-agent-memory` is a small, auditable memory layer for AI agents that runs on
+your own machine. It exposes the same local memory store through CLI, HTTP, MCP,
+and a minimal web UI, so you can add, inspect, pin, correct, delete, and export
+what agents remember.
 
-- every memory has scope, source, confidence, status, and timestamps
-- pinned memories are injected every time; searchable memories are retrieved on demand
-- outdated or contradicted memories can be superseded instead of silently competing
-- users can view, edit, delete, and export local memory data
+This repository is intentionally a personal experimental MVP. It is designed for
+single-user local development, lightweight self-hosting, and agent integration
+experiments. It is not a multi-user SaaS, a cloud sync service, or a secret store.
 
-## MVP Target
+## What It Does
 
-The first MVP should make this demo possible:
+- Stores memories in a local SQLite database.
+- Supports scoped memories such as `global`, `project:<name>`, `agent:<name>`,
+  and `session:<id>`.
+- Separates pinned memory from searchable memory.
+- Preserves provenance fields such as source, confidence, status, and timestamps.
+- Provides CLI commands for add, search, list, pin, unpin, update, delete, serve,
+  export, and MCP.
+- Serves a local HTTP API and minimal review UI.
+- Exposes MCP tools for compatible agents.
 
-```bash
-./scripts/dev-up.sh
-lam add "用户偏好：个人 wiki 笔记默认写中文" --scope global --pin
-lam search "wiki 笔记"
-lam mcp
-```
+## MVP Status
 
-Then an MCP-capable agent can call:
-
-```text
-memory_get_pinned
-memory_search
-memory_add
-memory_update
-memory_delete
-```
-
-and receive memory entries with provenance instead of anonymous context snippets.
-
-## First Version Scope
-
-- SQLite local database under `~/.local-agent-memory/memory.db`
-- SQLite FTS5 keyword search
-- optional vector search adapter, starting with `sqlite-vec` when available
-- CLI for init, serve, add, search, pin, unpin, update, delete, export
-- HTTP API for UI and external integrations
-- MCP server for agents
-- minimal web UI for memory review and deletion
-- local one-command startup for development and self-hosted use
-
-Out of scope for the first MVP:
-
-- multi-user SaaS
-- cloud sync
-- Postgres as the default backend
-- full knowledge graph database
-- automatic memory extraction from every transcript without review
-- storing secrets, API keys, credentials, or highly sensitive personal data
-
-## Local Usage
+The current MVP is meant to prove a tight local loop:
 
 ```bash
 ./scripts/dev-up.sh
-uv run lam add "用户偏好：个人 wiki 笔记默认写中文" --scope global --kind preference --pin
-uv run lam search "wiki 笔记"
+uv run lam add "User preference: write personal wiki notes in Chinese" --scope global --kind preference --pin
+uv run lam search "wiki notes"
 uv run lam serve
 uv run lam mcp
 ```
 
-From a fresh clone, this starts the HTTP API in one foreground command:
+See [docs/mvp.md](docs/mvp.md), [docs/architecture.md](docs/architecture.md), and
+[docs/tasks.md](docs/tasks.md) for the scope, architecture, and completed task list.
+
+## Requirements
+
+- macOS, Linux, or another environment with Python 3.11+
+- [`uv`](https://docs.astral.sh/uv/) available on `PATH`
+- SQLite with FTS5 support, which is included in the standard Python SQLite build
+  on most developer machines
+
+Install `uv` if needed:
+
+```bash
+python3 -m pip install uv
+```
+
+## Local Development
+
+From a fresh clone:
+
+```bash
+git clone <repo-url>
+cd local-agent-memory
+./scripts/dev-up.sh
+```
+
+The setup command installs dependencies, creates the virtual environment through
+`uv`, and initializes the SQLite database.
+
+Useful development commands:
+
+```bash
+./scripts/dev-up.sh            # install dependencies and initialize the database
+./scripts/dev-up.sh serve      # start the HTTP API and web UI
+./scripts/dev-up.sh test       # initialize and run tests
+./scripts/test.sh              # run the unittest suite
+./scripts/format.sh            # run formatting/lint helpers
+```
+
+Direct CLI usage:
+
+```bash
+uv run lam init
+uv run lam add "Project decision: keep SQLite as the default backend" --scope project:local-agent-memory --kind decision
+uv run lam add "User preference: show concise summaries first" --scope global --kind preference --pin
+uv run lam list --scope global --status pinned
+uv run lam search "SQLite backend" --scope project:local-agent-memory
+uv run lam export --format json > local-agent-memory-export.json
+```
+
+## Lightweight Local Deployment
+
+The default deployment target is a single-user service bound to loopback.
+
+```bash
+LAM_HOST=127.0.0.1 \
+LAM_PORT=18790 \
+LAM_DB_PATH="$HOME/.local-agent-memory/memory.db" \
+./scripts/dev-up.sh serve
+```
+
+Then open:
+
+- Web UI: `http://127.0.0.1:18790/`
+- Health check: `http://127.0.0.1:18790/health`
+- Export endpoint: `http://127.0.0.1:18790/export`
+
+The service initializes the database automatically when the API starts. Keep it
+bound to `127.0.0.1` unless you have added your own network boundary, authentication,
+and backup plan.
+
+### Deployment Guidelines
+
+- Keep the default loopback host for personal use: `LAM_HOST=127.0.0.1`.
+- Choose a stable database path with `LAM_DB_PATH`; the default is
+  `~/.local-agent-memory/memory.db`.
+- Back up the SQLite file or periodically export JSON before experiments:
+  `uv run lam export --format json > backup.json`.
+- Do not store API keys, passwords, tokens, recovery phrases, or other secrets as
+  memories.
+- Use pinned memories only for small, durable preferences or operating rules that
+  should always be injected.
+- Prefer scoped memories for project facts: `project:<repo-or-system-name>`.
+- Run the service under a simple process supervisor only after the foreground
+  command works reliably on your machine.
+- Check `/health` after startup and after changing environment variables.
+- Reset a test database by deleting the SQLite file and running `uv run lam init`.
+
+Example reset:
+
+```bash
+rm -f ~/.local-agent-memory/memory.db
+uv run lam init
+```
+
+## HTTP API
+
+Start the API:
 
 ```bash
 ./scripts/dev-up.sh serve
 ```
 
-The default database path is `~/.local-agent-memory/memory.db`. Set `LAM_DB_PATH` to use a
-different SQLite file.
+Key endpoints:
 
-Export and reset:
-
-```bash
-uv run lam export --format json > local-agent-memory-export.json
-rm -f ~/.local-agent-memory/memory.db
-uv run lam init
+```text
+GET    /
+GET    /health
+GET    /memories
+POST   /memories
+GET    /memories/{id}
+PATCH  /memories/{id}
+DELETE /memories/{id}
+POST   /search
+GET    /pinned
+GET    /export
 ```
 
-## MCP Config Examples
+Example search request:
 
-Codex and Claude Desktop can use the same stdio server shape:
+```bash
+curl -s http://127.0.0.1:18790/search \
+  -H 'content-type: application/json' \
+  -d '{"query":"SQLite backend","scope":"project:local-agent-memory","limit":5}'
+```
+
+## MCP Integration
+
+For MCP clients that support stdio servers, point them at the local CLI command.
 
 ```json
 {
@@ -105,8 +187,17 @@ Codex and Claude Desktop can use the same stdio server shape:
 }
 ```
 
-For OpenClaw builds that accept command-based MCP server entries, use the same command,
-args, and env values:
+Available MCP tools:
+
+```text
+memory_get_pinned
+memory_search
+memory_add
+memory_update
+memory_delete
+```
+
+For command-based OpenClaw MCP entries, use the same command, args, and environment:
 
 ```json
 {
@@ -120,12 +211,34 @@ args, and env values:
 }
 ```
 
-## Design Notes
+## Data Ownership
 
-The MVP borrows three ideas from popular memory projects:
+By default, data lives in:
 
-- Mem0: expose memory as a small universal API, not as a hidden framework detail
-- Graphiti: preserve temporal state and conflict/supersession metadata
-- Letta: separate hot/pinned memory from cold/searchable memory
+```text
+~/.local-agent-memory/memory.db
+```
 
-See [docs/mvp.md](docs/mvp.md), [docs/architecture.md](docs/architecture.md), and [docs/tasks.md](docs/tasks.md) for the build plan.
+Use `LAM_DB_PATH` or the CLI-level `--db` option to point at another SQLite file:
+
+```bash
+LAM_DB_PATH=/tmp/lam-demo.db uv run lam add "Temporary test memory" --scope global
+uv run lam --db /tmp/lam-demo.db list
+```
+
+Export is JSON and includes memory records plus audit events:
+
+```bash
+uv run lam export --format json > local-agent-memory-export.json
+```
+
+## Development Notes
+
+This MVP borrows three product ideas:
+
+- Mem0: expose memory as a small universal API, not as a hidden framework detail.
+- Graphiti: preserve temporal state and conflict/supersession metadata.
+- Letta: separate hot/pinned memory from cold/searchable memory.
+
+The current implementation keeps SQLite-specific logic inside storage/service
+layers so CLI, HTTP, UI, and MCP use the same core behavior.
