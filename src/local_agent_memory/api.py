@@ -116,6 +116,10 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     def get_memory(memory_id: str) -> dict[str, Any]:
         return _handle(lambda: service.get_memory(memory_id).to_dict())
 
+    @app.get("/memories/{memory_id}/events")
+    def get_memory_events(memory_id: str) -> list[dict[str, Any]]:
+        return _handle(lambda: _memory_event_dicts(service, memory_id))
+
     @app.patch("/memories/{memory_id}")
     def update_memory(memory_id: str, payload: MemoryPatch) -> dict[str, Any]:
         return _handle(
@@ -196,3 +200,8 @@ def _handle(callable_: Any) -> Any:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ServiceError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _memory_event_dicts(service: MemoryService, memory_id: str) -> list[dict[str, Any]]:
+    service.get_memory(memory_id)
+    return [event.to_dict() for event in service.repo.list_events(memory_id)]

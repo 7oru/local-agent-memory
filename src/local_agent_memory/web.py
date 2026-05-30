@@ -68,7 +68,7 @@ def index_html() -> str:
     .shell {
       min-height: 100vh;
       display: grid;
-      grid-template-columns: 220px minmax(0, 1fr) 360px;
+      grid-template-columns: 220px minmax(0, 1fr) minmax(420px, 32vw);
     }
     .rail, .detail {
       background: #eef2f0;
@@ -181,6 +181,10 @@ def index_html() -> str:
       max-width: 520px;
       overflow-wrap: anywhere;
     }
+    .source-cell {
+      overflow-wrap: anywhere;
+      color: var(--muted);
+    }
     .content-snippet {
       display: -webkit-box;
       -webkit-line-clamp: 3;
@@ -194,6 +198,74 @@ def index_html() -> str:
       padding: 2px 7px;
       background: #fafafa;
       font-size: 12px;
+    }
+    .detail-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .detail-header h2 {
+      margin-bottom: 4px;
+    }
+    .detail-section {
+      display: grid;
+      gap: 10px;
+      padding: 12px 0;
+      border-top: 1px solid var(--line);
+    }
+    .section-title {
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+    .read-box {
+      min-height: 92px;
+      max-height: 220px;
+      overflow: auto;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: white;
+      padding: 9px;
+    }
+    .kv-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .span-2 {
+      grid-column: 1 / -1;
+    }
+    .compact-textarea {
+      min-height: 58px;
+    }
+    .event-list {
+      display: grid;
+      gap: 8px;
+      max-height: 260px;
+      overflow: auto;
+    }
+    .event-item {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: white;
+      padding: 8px;
+    }
+    .event-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .event-data {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      color: var(--muted);
     }
     .stack {
       display: grid;
@@ -317,26 +389,47 @@ def index_html() -> str:
       </section>
     </main>
     <aside class="detail">
-      <h2>Memory</h2>
-      <div class="stack">
+      <div class="detail-header">
+        <div>
+          <h2>Memory</h2>
+          <div class="mono muted" id="detail-heading-id">Select a row</div>
+        </div>
+        <span class="status" id="detail-status-pill">none</span>
+      </div>
+      <div class="detail-section">
+        <div class="section-title">Content</div>
+        <div class="read-box" id="detail-content-preview">Select a memory to inspect it.</div>
+        <label><span>Edit content</span><textarea id="detail-content"></textarea></label>
+      </div>
+      <div class="detail-section">
+        <div class="section-title">Identity</div>
         <label><span>ID</span><input id="detail-id" readonly></label>
-        <label><span>Content</span><textarea id="detail-content"></textarea></label>
-        <div class="form-grid">
+        <div class="kv-grid">
           <label><span>Kind</span><input id="detail-kind"></label>
           <label><span>Scope</span><input id="detail-scope"></label>
-        </div>
-        <div class="form-grid">
           <label><span>Status</span><input id="detail-status"></label>
-          <label><span>Confidence</span><input id="detail-confidence" type="number" step="0.01"></label>
+          <label><span>Confidence</span><input id="detail-confidence" type="number" step="0.01" min="0" max="1"></label>
         </div>
-        <div class="form-grid">
+      </div>
+      <div class="detail-section">
+        <div class="section-title">Provenance</div>
+        <div class="kv-grid">
           <label><span>Source kind</span><input id="detail-source-kind" readonly></label>
-          <label><span>Source ref</span><input id="detail-source-ref"></label>
-        </div>
-        <div class="form-grid">
+          <label class="span-2"><span>Source ref</span><textarea class="compact-textarea mono" id="detail-source-ref"></textarea></label>
           <label><span>Created</span><input id="detail-created" readonly></label>
           <label><span>Updated</span><input id="detail-updated" readonly></label>
+          <label><span>Valid from</span><input id="detail-valid-from" readonly></label>
+          <label><span>Valid to</span><input id="detail-valid-to" readonly></label>
         </div>
+        <label><span>Supersedes / replacement ID</span><input id="detail-supersedes" readonly></label>
+      </div>
+      <div class="detail-section">
+        <div class="section-title">Tags & Metadata</div>
+        <label><span>Tags</span><input id="detail-tags" placeholder="comma,separated,tags"></label>
+        <label><span>Metadata JSON</span><textarea class="mono" id="detail-metadata" spellcheck="false"></textarea></label>
+      </div>
+      <div class="detail-section">
+        <div class="section-title">Lifecycle</div>
         <div class="actions">
           <button class="primary" id="save-memory">Save</button>
           <button id="pin-memory">Pin</button>
@@ -346,6 +439,10 @@ def index_html() -> str:
         </div>
         <label><span>Replacement</span><textarea id="replacement-content"></textarea></label>
         <button id="supersede-memory">Supersede</button>
+      </div>
+      <div class="detail-section">
+        <div class="section-title">Audit Events</div>
+        <div class="event-list" id="detail-events"></div>
       </div>
     </aside>
   </div>
@@ -424,6 +521,27 @@ def index_html() -> str:
       return `${normalized.slice(0, maxLength - 1)}...`;
     }
 
+    function formatJson(value) {
+      return JSON.stringify(value ?? {}, null, 2);
+    }
+
+    function parseTags(value) {
+      return String(value || "")
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+    }
+
+    function parseMetadata(value) {
+      const text = String(value || "").trim();
+      if (!text) return {};
+      const parsed = JSON.parse(text);
+      if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+        throw new Error("Metadata must be a JSON object");
+      }
+      return parsed;
+    }
+
     async function api(path, options = {}) {
       const response = await fetch(path, {
         headers: { "Content-Type": "application/json" },
@@ -443,7 +561,7 @@ def index_html() -> str:
           ${includeStatus ? `<td><span class="status">${escapeHtml(memory.status)}</span></td>` : ""}
           <td>${escapeHtml(memory.kind)}</td>
           <td>${escapeHtml(memory.scope)}</td>
-          <td>${escapeHtml(memory.source_kind)} ${escapeHtml(memory.source_ref || "")}</td>
+          <td class="source-cell"><div class="content-snippet">${escapeHtml(memory.source_kind)} ${escapeHtml(snippet(memory.source_ref || "", 96))}</div></td>
           ${includeStatus ? "" : `<td>${escapeHtml(memory.updated_at)}</td>`}
           <td class="content-cell"><div class="content-snippet">${escapeHtml(snippet(memory.content))}</div></td>
         </tr>
@@ -515,6 +633,9 @@ def index_html() -> str:
     async function loadMemory(id) {
       const memory = await api(`/memories/${id}`);
       state.selected = memory;
+      $("detail-heading-id").textContent = memory.id;
+      $("detail-status-pill").textContent = memory.status;
+      $("detail-content-preview").textContent = memory.content;
       $("detail-id").value = memory.id;
       $("detail-content").value = memory.content;
       $("detail-kind").value = memory.kind;
@@ -525,6 +646,31 @@ def index_html() -> str:
       $("detail-source-ref").value = memory.source_ref || "";
       $("detail-created").value = memory.created_at;
       $("detail-updated").value = memory.updated_at;
+      $("detail-valid-from").value = memory.valid_from || "";
+      $("detail-valid-to").value = memory.valid_to || "";
+      $("detail-supersedes").value = memory.supersedes_id || "";
+      $("detail-tags").value = (memory.tags || []).join(", ");
+      $("detail-metadata").value = formatJson(memory.metadata);
+      await loadEvents(id);
+    }
+
+    async function loadEvents(id) {
+      $("detail-events").innerHTML = "<div class=\\"muted\\">Loading events...</div>";
+      const events = await api(`/memories/${id}/events`);
+      if (!events.length) {
+        $("detail-events").innerHTML = "<div class=\\"muted\\">No audit events.</div>";
+        return;
+      }
+      $("detail-events").innerHTML = events.map((event) => `
+        <div class="event-item">
+          <div class="event-head">
+            <strong>${escapeHtml(event.event_type)}</strong>
+            <span class="mono muted">${escapeHtml(event.created_at)}</span>
+          </div>
+          <div class="muted">actor: ${escapeHtml(event.actor)}</div>
+          <pre class="event-data mono">${escapeHtml(formatJson(event.data))}</pre>
+        </div>
+      `).join("");
     }
 
     function selectedId() {
@@ -539,7 +685,9 @@ def index_html() -> str:
         scope: $("detail-scope").value,
         status: $("detail-status").value,
         confidence: Number($("detail-confidence").value),
-        source_ref: $("detail-source-ref").value || null
+        source_ref: $("detail-source-ref").value || null,
+        tags: parseTags($("detail-tags").value),
+        metadata: parseMetadata($("detail-metadata").value)
       };
       await api(`/memories/${selectedId()}`, { method: "PATCH", body: JSON.stringify(patch) });
       await refreshCurrent();
@@ -570,7 +718,7 @@ def index_html() -> str:
     async function refreshCurrent() {
       if (state.selected?.id) await loadMemory(state.selected.id).catch(() => {});
       await loadPinned();
-      if ($("search-query").value) await runSearch();
+      if (viewFromPath() === "search") await runSearch();
     }
 
     async function loadSettings() {

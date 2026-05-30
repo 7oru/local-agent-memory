@@ -36,11 +36,23 @@ class ApiTests(unittest.TestCase):
         response = self.client.get("/app/search")
         self.assertEqual(200, response.status_code)
         html = response.text
-        for text in ("Pinned", "Search", "Settings", "Add Memory", "Supersede", "mcpServers"):
+        for text in (
+            "Pinned",
+            "Search",
+            "Settings",
+            "Add Memory",
+            "Supersede",
+            "Audit Events",
+            "Metadata JSON",
+            "Tags",
+            "mcpServers",
+        ):
             self.assertIn(text, html)
         self.assertIn("function snippet", html)
         self.assertIn("aria-busy", html)
         self.assertIn("/memories?", html)
+        self.assertIn("/events", html)
+        self.assertIn("detail-content-preview", html)
         self.assertIn("Loading memories...", html)
         self.assertIn("/app/pinned", html)
         self.assertIn("/app/search", html)
@@ -143,6 +155,27 @@ class ApiTests(unittest.TestCase):
 
         full = self.client.get(f"/memories/{created['id']}").json()
         self.assertEqual(long_content.strip(), full["content"])
+
+    def test_memory_events_endpoint_returns_audit_history(self) -> None:
+        created = self.client.post(
+            "/memories",
+            json={
+                "content": "Detail UI should expose memory audit history",
+                "scope": "project:local-agent-memory",
+                "kind": "task_state",
+            },
+        ).json()
+
+        self.client.patch(f"/memories/{created['id']}", json={"status": "pinned"})
+
+        response = self.client.get(f"/memories/{created['id']}/events")
+        self.assertEqual(200, response.status_code)
+        events = response.json()
+        self.assertEqual(["created", "pinned"], [event["event_type"] for event in events])
+        self.assertEqual(created["id"], events[0]["memory_id"])
+
+        missing_response = self.client.get("/memories/missing/events")
+        self.assertEqual(404, missing_response.status_code)
 
     def test_http_supersede_endpoint(self) -> None:
         created = self.client.post(
