@@ -25,14 +25,14 @@
 
 ## M2: Memory Service
 
-- [ ] Define memory schema/types
-- [ ] Add validation for scope, kind, status, confidence
-- [ ] Add secret-like content detection
-- [ ] Add pin/unpin service methods that validate lifecycle transitions and reject deleted, expired, archived, or superseded records
-- [ ] Add scoped pinned memory retrieval for exact scope plus `global`, excluding inactive statuses by default
-- [ ] Add scope-aware search
-- [ ] Add supersede flow
-- [ ] Add audit events for all writes
+- [x] Define memory schema/types
+- [x] Add validation for scope, kind, status, confidence
+- [x] Add secret-like content detection
+- [x] Add pin/unpin service methods that validate lifecycle transitions and reject deleted, expired, archived, or superseded records
+- [x] Add scoped pinned memory retrieval for exact scope plus `global`, excluding inactive statuses by default
+- [x] Add scope-aware search
+- [x] Add supersede flow
+- [x] Add audit events for all writes
 
 ## M3: CLI
 
