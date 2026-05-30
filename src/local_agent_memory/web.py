@@ -284,7 +284,7 @@ def index_html() -> str:
         </div>
         <div class="toolbar">
           <input id="search-query" placeholder="Search" aria-label="Search query">
-          <input id="search-scope" value="global" aria-label="Search scope">
+          <input id="search-scope" placeholder="optional scope" aria-label="Search scope">
           <select id="search-status" aria-label="Search status">
             <option value="">active + pinned</option>
             <option value="active">active</option>
@@ -423,18 +423,30 @@ def index_html() -> str:
     }
 
     async function runSearch() {
-      setBusy(true, "Searching...");
-      const payload = {
-        query: $("search-query").value,
-        scope: $("search-scope").value || null,
-        status: $("search-status").value || null,
-        include_inactive: Boolean($("search-status").value),
-        content_limit: 320
-      };
+      const query = $("search-query").value.trim();
+      const scope = $("search-scope").value.trim();
+      const status = $("search-status").value;
+      setBusy(true, query ? "Searching..." : "Loading memories...");
       try {
-        const rows = await api("/search", { method: "POST", body: JSON.stringify(payload) });
+        const rows = query
+          ? await api("/search", {
+              method: "POST",
+              body: JSON.stringify({
+                query,
+                scope: scope || null,
+                status: status || null,
+                include_inactive: Boolean(status),
+                content_limit: 320
+              })
+            })
+          : await api(`/memories?${new URLSearchParams({
+              ...(scope ? { scope } : {}),
+              ...(status ? { status, include_inactive: "true" } : {}),
+              limit: "100",
+              content_limit: "320"
+            })}`);
         renderRows($("search-body"), rows, true);
-        notice(`${rows.length} results`);
+        notice(query ? `${rows.length} results` : `${rows.length} memories`);
       } finally {
         setBusy(false);
       }

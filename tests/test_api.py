@@ -35,6 +35,8 @@ class ApiTests(unittest.TestCase):
             self.assertIn(text, html)
         self.assertIn("function snippet", html)
         self.assertIn("aria-busy", html)
+        self.assertIn("/memories?", html)
+        self.assertIn("Loading memories...", html)
 
     def test_http_lifecycle_pin_get_pinned_unpin_and_repin(self) -> None:
         created_response = self.client.post(
