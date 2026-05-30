@@ -12,16 +12,16 @@
 
 ## M1: Core Storage
 
-- [ ] Create SQLite connection/config module
-- [ ] Add migrations for `memories`, `memory_events`, `memory_fts`, `settings`
-- [ ] Implement memory repository
-- [ ] Implement repository `pin_memory(id)` and `unpin_memory(id)` transitions between `active` and `pinned`
-- [ ] Write `pinned` and `unpinned` audit events from repository pin/unpin operations
-- [ ] Implement FTS5 indexing
-- [ ] Add soft delete
-- [ ] Add export to JSON
-- [ ] Add tests for create, update, delete, list, export
-- [ ] Add tests for pin/unpin persistence, idempotency, audit events, and exclusion of deleted/expired/superseded memories from pinned retrieval
+- [x] Create SQLite connection/config module
+- [x] Add migrations for `memories`, `memory_events`, `memory_fts`, `settings`
+- [x] Implement memory repository
+- [x] Implement repository `pin_memory(id)` and `unpin_memory(id)` transitions between `active` and `pinned`
+- [x] Write `pinned` and `unpinned` audit events from repository pin/unpin operations
+- [x] Implement FTS5 indexing
+- [x] Add soft delete
+- [x] Add export to JSON
+- [x] Add tests for create, update, delete, list, export
+- [x] Add tests for pin/unpin persistence, idempotency, audit events, and exclusion of deleted/expired/superseded memories from pinned retrieval
 
 ## M2: Memory Service
 
