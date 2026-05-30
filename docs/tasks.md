@@ -45,24 +45,24 @@
 - [x] `lam update`
 - [x] `lam delete`
 - [x] `lam export`
-- [ ] `lam serve`
+- [x] `lam serve`
 - [ ] `lam mcp`
 - [x] Add CLI lifecycle test: `lam add --pin`, `lam list --status pinned`, `lam unpin <id>`, `lam list --status pinned`, `lam pin <id>`
 
 ## M4: HTTP API
 
-- [ ] `GET /health`
-- [ ] `GET /memories`
-- [ ] `POST /memories`
-- [ ] `GET /memories/{id}`
-- [ ] `PATCH /memories/{id}`
-- [ ] `DELETE /memories/{id}`
-- [ ] `POST /search`
-- [ ] `GET /pinned`
-- [ ] `GET /export`
-- [ ] Ensure `PATCH /memories/{id}` supports validated `status: pinned|active` pin/unpin transitions through the core service
-- [ ] Add HTTP lifecycle test that pins, reads `GET /pinned`, unpins, and confirms the memory is no longer pinned
-- [ ] API tests
+- [x] `GET /health`
+- [x] `GET /memories`
+- [x] `POST /memories`
+- [x] `GET /memories/{id}`
+- [x] `PATCH /memories/{id}`
+- [x] `DELETE /memories/{id}`
+- [x] `POST /search`
+- [x] `GET /pinned`
+- [x] `GET /export`
+- [x] Ensure `PATCH /memories/{id}` supports validated `status: pinned|active` pin/unpin transitions through the core service
+- [x] Add HTTP lifecycle test that pins, reads `GET /pinned`, unpins, and confirms the memory is no longer pinned
+- [x] API tests
 
 ## M5: MCP Server
 

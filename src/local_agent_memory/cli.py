@@ -195,10 +195,9 @@ def _cmd_export(args: argparse.Namespace, service: MemoryService) -> int:
 
 
 def _cmd_serve(args: argparse.Namespace, service: MemoryService) -> int:
-    _ = service
     from .api import run_server
 
-    run_server(db_path=args.db, host=args.host, port=args.port)
+    run_server(db_path=service.repo.db_path, host=args.host, port=args.port)
     return 0
 
 
