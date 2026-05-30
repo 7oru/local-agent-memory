@@ -46,7 +46,7 @@
 - [x] `lam delete`
 - [x] `lam export`
 - [x] `lam serve`
-- [ ] `lam mcp`
+- [x] `lam mcp`
 - [x] Add CLI lifecycle test: `lam add --pin`, `lam list --status pinned`, `lam unpin <id>`, `lam list --status pinned`, `lam pin <id>`
 
 ## M4: HTTP API
@@ -66,15 +66,15 @@
 
 ## M5: MCP Server
 
-- [ ] Implement `memory_get_pinned`
-- [ ] Implement `memory_search`
-- [ ] Implement `memory_add`
-- [ ] Implement `memory_update`
-- [ ] Implement `memory_delete`
-- [ ] Verify `memory_update` can change `status` between `active` and `pinned` and `memory_get_pinned` reflects the change
-- [ ] Add MCP lifecycle test for add pinned memory, get pinned memory, unpin through update, and confirm pinned retrieval excludes it
-- [ ] Add MCP config examples for Codex, Claude Desktop, and OpenClaw where applicable
-- [ ] Add integration tests with representative tool calls
+- [x] Implement `memory_get_pinned`
+- [x] Implement `memory_search`
+- [x] Implement `memory_add`
+- [x] Implement `memory_update`
+- [x] Implement `memory_delete`
+- [x] Verify `memory_update` can change `status` between `active` and `pinned` and `memory_get_pinned` reflects the change
+- [x] Add MCP lifecycle test for add pinned memory, get pinned memory, unpin through update, and confirm pinned retrieval excludes it
+- [x] Add MCP config examples for Codex, Claude Desktop, and OpenClaw where applicable
+- [x] Add integration tests with representative tool calls
 
 ## M6: Minimal Web UI
 

@@ -54,6 +54,59 @@ Out of scope for the first MVP:
 - automatic memory extraction from every transcript without review
 - storing secrets, API keys, credentials, or highly sensitive personal data
 
+## Local Usage
+
+```bash
+uv sync --extra dev
+uv run lam init
+uv run lam add "用户偏好：个人 wiki 笔记默认写中文" --scope global --kind preference --pin
+uv run lam search "wiki 笔记"
+uv run lam serve
+uv run lam mcp
+```
+
+The default database path is `~/.local-agent-memory/memory.db`. Set `LAM_DB_PATH` to use a
+different SQLite file.
+
+## MCP Config Examples
+
+Codex and Claude Desktop can use the same stdio server shape:
+
+```json
+{
+  "mcpServers": {
+    "local-agent-memory": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/path/to/local-agent-memory",
+        "run",
+        "lam",
+        "mcp"
+      ],
+      "env": {
+        "LAM_DB_PATH": "~/.local-agent-memory/memory.db"
+      }
+    }
+  }
+}
+```
+
+For OpenClaw builds that accept command-based MCP server entries, use the same command,
+args, and env values:
+
+```json
+{
+  "name": "local-agent-memory",
+  "transport": "stdio",
+  "command": "uv",
+  "args": ["--directory", "/path/to/local-agent-memory", "run", "lam", "mcp"],
+  "env": {
+    "LAM_DB_PATH": "~/.local-agent-memory/memory.db"
+  }
+}
+```
+
 ## Design Notes
 
 The MVP borrows three ideas from popular memory projects:
