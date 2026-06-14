@@ -94,11 +94,27 @@ class CliTests(unittest.TestCase):
             self.run_cli(
                 [
                     "add",
-                    "Kimi reviewer verdict: practical MVP ready",
+                    "Reviewer verdict: practical MVP ready",
                     "--scope",
                     "project:local-agent-memory",
                     "--kind",
                     "task_state",
+                    "--title",
+                    "Kimi MVP review",
+                    "--subject",
+                    "local-agent-memory",
+                    "--entity",
+                    "Kimi",
+                    "--entity",
+                    "local-agent-memory",
+                    "--relation-json",
+                    '{"subject":"Kimi","predicate":"reviewed","object":"local-agent-memory"}',
+                    "--salience",
+                    "0.8",
+                    "--privacy",
+                    "personal",
+                    "--retention",
+                    "long_term",
                     "--source-kind",
                     "import",
                     "--source-ref",
@@ -113,6 +129,11 @@ class CliTests(unittest.TestCase):
         )
 
         self.assertEqual("import", created["source_kind"])
+        self.assertEqual("Kimi MVP review", created["title"])
+        self.assertEqual("local-agent-memory", created["subject"])
+        self.assertEqual(["Kimi", "local-agent-memory"], created["entities"])
+        self.assertEqual(0.8, created["salience"])
+        self.assertEqual("long_term", created["retention"])
         self.assertEqual("moonshot-v1-128k", created["metadata"]["model"])
         self.assertEqual(5, created["metadata"]["rounds"])
 
@@ -123,6 +144,8 @@ class CliTests(unittest.TestCase):
                     created["id"],
                     "--source-kind",
                     "manual",
+                    "--entity",
+                    "local-agent-memory",
                     "--metadata",
                     "verified=true",
                     "--json",
@@ -130,6 +153,7 @@ class CliTests(unittest.TestCase):
             )
         )
         self.assertEqual("manual", updated["source_kind"])
+        self.assertEqual(["local-agent-memory"], updated["entities"])
         self.assertEqual("moonshot-v1-128k", updated["metadata"]["model"])
         self.assertTrue(updated["metadata"]["verified"])
 

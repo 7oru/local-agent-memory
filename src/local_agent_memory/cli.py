@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .models import SOURCE_KINDS
+from .models import MEMORY_PRIVACY_LEVELS, MEMORY_RETENTION_POLICIES, SOURCE_KINDS
 from .service import MemoryService, ServiceError
 from .storage import default_db_path
 
@@ -43,10 +43,22 @@ def build_parser() -> argparse.ArgumentParser:
     add = subparsers.add_parser("add", help="Add a memory")
     add.add_argument("content")
     add.add_argument("--scope", required=True)
+    add.add_argument("--title")
+    add.add_argument("--summary")
+    add.add_argument("--subject")
     add.add_argument("--kind", default="note")
     add.add_argument("--confidence", type=float, default=1.0)
+    add.add_argument("--salience", type=float, default=0.5)
+    add.add_argument("--privacy", choices=MEMORY_PRIVACY_LEVELS, default="personal")
+    add.add_argument("--retention", choices=MEMORY_RETENTION_POLICIES, default="default")
     add.add_argument("--source-kind", choices=SOURCE_KINDS, default="cli")
     add.add_argument("--source-ref")
+    add.add_argument("--user-id")
+    add.add_argument("--agent-id")
+    add.add_argument("--app-id")
+    add.add_argument("--run-id")
+    add.add_argument("--entity", action="append", default=[])
+    add.add_argument("--relation-json", action="append", default=[], metavar="JSON_OBJECT")
     add.add_argument("--metadata", action="append", default=[], metavar="KEY=VALUE")
     add.add_argument("--tag", action="append", default=[])
     add.add_argument("--pin", action="store_true")
@@ -83,12 +95,24 @@ def build_parser() -> argparse.ArgumentParser:
     update = subparsers.add_parser("update", help="Update a memory")
     update.add_argument("id")
     update.add_argument("--content")
+    update.add_argument("--title")
+    update.add_argument("--summary")
+    update.add_argument("--subject")
     update.add_argument("--scope")
     update.add_argument("--kind")
     update.add_argument("--status")
     update.add_argument("--confidence", type=float)
+    update.add_argument("--salience", type=float)
+    update.add_argument("--privacy", choices=MEMORY_PRIVACY_LEVELS)
+    update.add_argument("--retention", choices=MEMORY_RETENTION_POLICIES)
     update.add_argument("--source-kind", choices=SOURCE_KINDS)
     update.add_argument("--source-ref")
+    update.add_argument("--user-id")
+    update.add_argument("--agent-id")
+    update.add_argument("--app-id")
+    update.add_argument("--run-id")
+    update.add_argument("--entity", action="append")
+    update.add_argument("--relation-json", action="append", metavar="JSON_OBJECT")
     update.add_argument("--metadata", action="append", metavar="KEY=VALUE")
     update.add_argument("--tag", action="append")
     update.add_argument("--json", action="store_true")
@@ -125,10 +149,22 @@ def _cmd_add(args: argparse.Namespace, service: MemoryService) -> int:
     memory = service.add_memory(
         args.content,
         scope=args.scope,
+        title=args.title,
+        summary=args.summary,
+        subject=args.subject,
         kind=args.kind,
         confidence=args.confidence,
+        salience=args.salience,
+        privacy=args.privacy,
+        retention=args.retention,
         source_kind=args.source_kind,
         source_ref=args.source_ref,
+        user_id=args.user_id,
+        agent_id=args.agent_id,
+        app_id=args.app_id,
+        run_id=args.run_id,
+        entities=args.entity,
+        relations=_parse_json_objects(args.relation_json, "--relation-json"),
         tags=args.tag,
         metadata=_parse_metadata(args.metadata),
         pin=args.pin,
@@ -175,14 +211,30 @@ def _cmd_unpin(args: argparse.Namespace, service: MemoryService) -> int:
 
 def _cmd_update(args: argparse.Namespace, service: MemoryService) -> int:
     patch: dict[str, Any] = {}
-    for field in ("content", "scope", "kind", "status", "confidence"):
+    for field in (
+        "content",
+        "title",
+        "summary",
+        "subject",
+        "scope",
+        "kind",
+        "status",
+        "confidence",
+        "salience",
+        "privacy",
+        "retention",
+    ):
         value = getattr(args, field)
         if value is not None:
             patch[field] = value
-    for field in ("source_kind", "source_ref"):
+    for field in ("source_kind", "source_ref", "user_id", "agent_id", "app_id", "run_id"):
         value = getattr(args, field)
         if value is not None:
             patch[field] = value
+    if args.entity is not None:
+        patch["entities"] = args.entity
+    if args.relation_json is not None:
+        patch["relations"] = _parse_json_objects(args.relation_json, "--relation-json")
     if args.metadata is not None:
         metadata = dict(service.get_memory(args.id).metadata)
         metadata.update(_parse_metadata(args.metadata))
@@ -244,6 +296,9 @@ def _print_table(items: list[dict[str, Any]]) -> None:
         "status",
         "kind",
         "scope",
+        "title",
+        "subject",
+        "salience",
         "confidence",
         "source_kind",
         "source_ref",
@@ -280,3 +335,16 @@ def _parse_metadata_value(value: str) -> Any:
         return json.loads(value)
     except json.JSONDecodeError:
         return value
+
+
+def _parse_json_objects(items: list[str] | None, option: str) -> list[dict[str, Any]]:
+    objects: list[dict[str, Any]] = []
+    for item in items or []:
+        try:
+            parsed = json.loads(item)
+        except json.JSONDecodeError as exc:
+            raise ServiceError(f"{option} must be valid JSON") from exc
+        if not isinstance(parsed, dict):
+            raise ServiceError(f"{option} must be a JSON object")
+        objects.append(parsed)
+    return objects

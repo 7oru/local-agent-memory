@@ -73,12 +73,27 @@ class McpServerTests(unittest.TestCase):
         created = self.call_tool(
             "memory_add",
             {
-                "content": "OpenClaw 默认模型是 minimax/MiniMax-M2.5",
+                "content": "默认模型是 minimax/MiniMax-M2.5",
                 "scope": "project:openclaw",
+                "title": "OpenClaw default model",
+                "subject": "OpenClaw",
+                "entities": ["OpenClaw", "MiniMax-M2.5"],
+                "relations": [
+                    {
+                        "subject": "OpenClaw",
+                        "predicate": "uses_model",
+                        "object": "MiniMax-M2.5",
+                    }
+                ],
+                "salience": 0.9,
+                "privacy": "personal",
+                "retention": "long_term",
                 "kind": "fact",
                 "source_ref": "docs/mvp.md",
             },
         )
+        self.assertEqual("OpenClaw", created["subject"])
+        self.assertEqual(["OpenClaw", "MiniMax-M2.5"], created["entities"])
         results = self.call_tool(
             "memory_search",
             {"query": "OpenClaw 默认模型", "scope": "project:openclaw"},
@@ -93,6 +108,12 @@ class McpServerTests(unittest.TestCase):
             "confidence",
             "source_kind",
             "source_ref",
+            "schema_version",
+            "subject",
+            "entities",
+            "salience",
+            "privacy",
+            "retention",
             "created_at",
             "updated_at",
         ):

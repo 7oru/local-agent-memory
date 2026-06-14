@@ -14,6 +14,7 @@
 
 - [x] Create SQLite connection/config module
 - [x] Add migrations for `memories`, `memory_events`, `memory_fts`, `settings`
+- [x] Add normalized memory envelope fields and legacy SQLite migration path
 - [x] Implement memory repository
 - [x] Implement repository `pin_memory(id)` and `unpin_memory(id)` transitions between `active` and `pinned`
 - [x] Write `pinned` and `unpinned` audit events from repository pin/unpin operations

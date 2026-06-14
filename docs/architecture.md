@@ -46,7 +46,10 @@ memory_embeddings
 settings
 ```
 
-`memories` stores the canonical record.
+`memories` stores the canonical normalized record. `content` remains the
+human-readable memory text, while optional normalized fields capture title,
+summary, subject, entities, relations, salience, privacy, retention, and
+integration IDs such as `user_id`, `agent_id`, `app_id`, and `run_id`.
 
 `memory_events` stores audit history:
 
@@ -89,6 +92,11 @@ session transcript
   -> user approval
   -> durable memory
 ```
+
+Full transcript rows should not be treated as durable memory by default. Keep
+raw conversations as source artifacts or import metadata, then promote compact
+facts, preferences, decisions, procedures, and task states into normalized
+memory records.
 
 ## Retrieval Flow
 

@@ -13,7 +13,8 @@
 - 使用本地 SQLite 数据库存储 memory。
 - 支持 `global`、`project:<name>`、`agent:<name>`、`session:<id>` 等作用域。
 - 区分 pinned memory 和 searchable memory。
-- 保留来源、置信度、状态、创建/更新时间等 provenance 字段。
+- 保留规范化 memory envelope，包括 provenance、subject/entity 线索、salience、
+  privacy、retention、置信度、状态、创建/更新时间等字段。
 - 提供 add、search、list、pin、unpin、update、delete、serve、export、mcp 等 CLI 命令。
 - 提供本地 HTTP API 和最小记忆审查 UI。
 - 通过 MCP tools 给兼容的 Agent 使用。
@@ -76,6 +77,38 @@ uv run lam list --scope global --status pinned
 uv run lam search "SQLite 后端" --scope project:local-agent-memory
 uv run lam export --format json > local-agent-memory-export.json
 ```
+
+外部评审或导入结果可以保留真实来源，同时补充规范化语义字段：
+
+```bash
+uv run lam add "Kimi reviewer verdict: practical MVP ready" \
+  --scope project:local-agent-memory \
+  --kind task_state \
+  --title "Kimi MVP review" \
+  --subject local-agent-memory \
+  --entity Kimi \
+  --entity local-agent-memory \
+  --relation-json '{"subject":"Kimi","predicate":"reviewed","object":"local-agent-memory"}' \
+  --salience 0.8 \
+  --retention long_term \
+  --source-kind import \
+  --source-ref "kimi-api:moonshot-v1-128k" \
+  --metadata model=moonshot-v1-128k \
+  --metadata rounds=5
+```
+
+## 规范化 Memory Schema
+
+数据库会保留 `content` 作为人可读的 canonical memory 文本，同时把外围记录整理成更接近工业界常见 Agent memory 的 envelope：
+
+| 区域 | 字段 |
+| --- | --- |
+| Identity | `id`、`schema_version`、`kind`、`scope`，以及可选 `user_id`、`agent_id`、`app_id`、`run_id` |
+| Meaning | `content`，以及可选 `title`、`summary`、`subject`、`entities`、`relations`、`tags`、`metadata` |
+| Retrieval | `status`、`confidence`、`salience`、`privacy`、`retention` |
+| Provenance | `source_kind`、`source_ref`、`valid_from`、`valid_to`、`supersedes_id`、`created_at`、`updated_at` |
+
+完整、未改动的聊天记录更适合作为 source artifact 或 import metadata 保留；真正进入 durable memory 的条目，建议是从聊天记录中抽取出来的较小 assertion、preference、decision、procedure 或 task state。
 
 ## 轻量级本地部署
 

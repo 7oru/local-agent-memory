@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from .models import (
     ACTIVE_RETRIEVAL_STATUSES,
+    MEMORY_SCHEMA_VERSION,
     Memory,
     MemoryEvent,
     dumps_json,
@@ -30,13 +31,26 @@ class InvalidTransitionError(StorageError):
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS memories (
   id TEXT PRIMARY KEY,
+  schema_version TEXT NOT NULL DEFAULT 'lam.memory.v1',
   content TEXT NOT NULL,
+  title TEXT,
+  summary TEXT,
   kind TEXT NOT NULL,
   scope TEXT NOT NULL,
   status TEXT NOT NULL,
   confidence REAL NOT NULL,
+  salience REAL NOT NULL DEFAULT 0.5,
+  privacy TEXT NOT NULL DEFAULT 'personal',
+  retention TEXT NOT NULL DEFAULT 'default',
+  subject TEXT,
+  entities TEXT NOT NULL DEFAULT '[]',
+  relations TEXT NOT NULL DEFAULT '[]',
   source_kind TEXT NOT NULL,
   source_ref TEXT,
+  user_id TEXT,
+  agent_id TEXT,
+  app_id TEXT,
+  run_id TEXT,
   valid_from TEXT NOT NULL,
   valid_to TEXT,
   supersedes_id TEXT,
@@ -74,8 +88,28 @@ ON memory_events(memory_id, id);
 
 FTS_SCHEMA = """
 CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts
-USING fts5(id UNINDEXED, content, kind, scope, tags);
+USING fts5(id UNINDEXED, content, kind, scope, tags, title, summary, subject, entities);
 """
+
+MEMORY_COLUMN_MIGRATIONS = {
+    "schema_version": (
+        "ALTER TABLE memories ADD COLUMN schema_version TEXT NOT NULL DEFAULT 'lam.memory.v1'"
+    ),
+    "title": "ALTER TABLE memories ADD COLUMN title TEXT",
+    "summary": "ALTER TABLE memories ADD COLUMN summary TEXT",
+    "salience": "ALTER TABLE memories ADD COLUMN salience REAL NOT NULL DEFAULT 0.5",
+    "privacy": "ALTER TABLE memories ADD COLUMN privacy TEXT NOT NULL DEFAULT 'personal'",
+    "retention": "ALTER TABLE memories ADD COLUMN retention TEXT NOT NULL DEFAULT 'default'",
+    "subject": "ALTER TABLE memories ADD COLUMN subject TEXT",
+    "entities": "ALTER TABLE memories ADD COLUMN entities TEXT NOT NULL DEFAULT '[]'",
+    "relations": "ALTER TABLE memories ADD COLUMN relations TEXT NOT NULL DEFAULT '[]'",
+    "user_id": "ALTER TABLE memories ADD COLUMN user_id TEXT",
+    "agent_id": "ALTER TABLE memories ADD COLUMN agent_id TEXT",
+    "app_id": "ALTER TABLE memories ADD COLUMN app_id TEXT",
+    "run_id": "ALTER TABLE memories ADD COLUMN run_id TEXT",
+}
+
+FTS_COLUMNS = ("id", "content", "kind", "scope", "tags", "title", "summary", "subject", "entities")
 
 
 def default_db_path() -> Path:
@@ -110,18 +144,32 @@ class MemoryRepository:
     def initialize(self) -> None:
         with closing(connect(self.db_path)) as connection:
             connection.executescript(SCHEMA)
-            connection.executescript(FTS_SCHEMA)
+            self._migrate_memories(connection)
+            self._ensure_fts(connection)
+            connection.commit()
 
     def create_memory(
         self,
         content: str,
         scope: str,
         *,
+        title: str | None = None,
+        summary: str | None = None,
         kind: str = "note",
         status: str = "active",
         confidence: float = 1.0,
+        salience: float = 0.5,
+        privacy: str = "personal",
+        retention: str = "default",
+        subject: str | None = None,
+        entities: list[str] | None = None,
+        relations: list[dict[str, Any]] | None = None,
         source_kind: str = "manual",
         source_ref: str | None = None,
+        user_id: str | None = None,
+        agent_id: str | None = None,
+        app_id: str | None = None,
+        run_id: str | None = None,
         valid_from: str | None = None,
         valid_to: str | None = None,
         supersedes_id: str | None = None,
@@ -134,13 +182,26 @@ class MemoryRepository:
         memory_id = _new_memory_id()
         row = {
             "id": memory_id,
+            "schema_version": MEMORY_SCHEMA_VERSION,
             "content": content,
+            "title": title,
+            "summary": summary,
             "kind": kind,
             "scope": scope,
             "status": status,
             "confidence": confidence,
+            "salience": salience,
+            "privacy": privacy,
+            "retention": retention,
+            "subject": subject,
+            "entities": dumps_json(entities or []),
+            "relations": dumps_json(relations or []),
             "source_kind": source_kind,
             "source_ref": source_ref,
+            "user_id": user_id,
+            "agent_id": agent_id,
+            "app_id": app_id,
+            "run_id": run_id,
             "valid_from": valid_from or now,
             "valid_to": valid_to,
             "supersedes_id": supersedes_id,
@@ -153,12 +214,16 @@ class MemoryRepository:
             connection.execute(
                 """
                 INSERT INTO memories (
-                  id, content, kind, scope, status, confidence, source_kind, source_ref,
-                  valid_from, valid_to, supersedes_id, created_at, updated_at, tags, metadata
+                  id, schema_version, content, title, summary, kind, scope, status, confidence,
+                  salience, privacy, retention, subject, entities, relations, source_kind,
+                  source_ref, user_id, agent_id, app_id, run_id, valid_from, valid_to,
+                  supersedes_id, created_at, updated_at, tags, metadata
                 )
                 VALUES (
-                  :id, :content, :kind, :scope, :status, :confidence, :source_kind, :source_ref,
-                  :valid_from, :valid_to, :supersedes_id, :created_at, :updated_at, :tags, :metadata
+                  :id, :schema_version, :content, :title, :summary, :kind, :scope, :status,
+                  :confidence, :salience, :privacy, :retention, :subject, :entities, :relations,
+                  :source_kind, :source_ref, :user_id, :agent_id, :app_id, :run_id, :valid_from,
+                  :valid_to, :supersedes_id, :created_at, :updated_at, :tags, :metadata
                 )
                 """,
                 row,
@@ -211,12 +276,24 @@ class MemoryRepository:
             return self.get_memory(memory_id)
         allowed_fields = {
             "content",
+            "title",
+            "summary",
             "kind",
             "scope",
             "status",
             "confidence",
+            "salience",
+            "privacy",
+            "retention",
+            "subject",
+            "entities",
+            "relations",
             "source_kind",
             "source_ref",
+            "user_id",
+            "agent_id",
+            "app_id",
+            "run_id",
             "valid_from",
             "valid_to",
             "supersedes_id",
@@ -232,6 +309,10 @@ class MemoryRepository:
             stored_patch["tags"] = dumps_json(stored_patch["tags"] or [])
         if "metadata" in stored_patch:
             stored_patch["metadata"] = dumps_json(stored_patch["metadata"] or {})
+        if "entities" in stored_patch:
+            stored_patch["entities"] = dumps_json(stored_patch["entities"] or [])
+        if "relations" in stored_patch:
+            stored_patch["relations"] = dumps_json(stored_patch["relations"] or [])
         stored_patch["updated_at"] = utc_now()
 
         assignments = ", ".join(f"{field} = :{field}" for field in stored_patch)
@@ -373,6 +454,7 @@ class MemoryRepository:
 
     def export_json(self) -> dict[str, Any]:
         return {
+            "schema_version": MEMORY_SCHEMA_VERSION,
             "memories": [memory.to_dict() for memory in self.list_memories(include_inactive=True)],
             "events": [event.to_dict() for event in self.list_events()],
         }
@@ -460,9 +542,14 @@ class MemoryRepository:
         like_clauses = []
         like_params: list[str] = []
         for term in terms:
-            like_clauses.append("(m.content LIKE ? OR m.kind LIKE ? OR m.scope LIKE ?)")
+            like_clauses.append(
+                "("
+                "m.content LIKE ? OR m.kind LIKE ? OR m.scope LIKE ? OR "
+                "m.title LIKE ? OR m.summary LIKE ? OR m.subject LIKE ? OR m.entities LIKE ?"
+                ")"
+            )
             value = f"%{term}%"
-            like_params.extend([value, value, value])
+            like_params.extend([value, value, value, value, value, value, value])
         like_filter = "(" + " OR ".join(like_clauses) + ")"
         if where:
             where = where.replace("WHERE ", f"WHERE {like_filter} AND ", 1)
@@ -485,9 +572,50 @@ class MemoryRepository:
         connection.execute("DELETE FROM memory_fts WHERE id = ?", (row["id"],))
         if row["status"] in ACTIVE_RETRIEVAL_STATUSES:
             connection.execute(
-                "INSERT INTO memory_fts (id, content, kind, scope, tags) VALUES (?, ?, ?, ?, ?)",
-                (row["id"], row["content"], row["kind"], row["scope"], row["tags"]),
+                """
+                INSERT INTO memory_fts (
+                  id, content, kind, scope, tags, title, summary, subject, entities
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["id"],
+                    row["content"],
+                    row["kind"],
+                    row["scope"],
+                    row["tags"],
+                    row.get("title"),
+                    row.get("summary"),
+                    row.get("subject"),
+                    row.get("entities", "[]"),
+                ),
             )
+
+    def _migrate_memories(self, connection: sqlite3.Connection) -> None:
+        existing_columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(memories)").fetchall()
+        }
+        for column, statement in MEMORY_COLUMN_MIGRATIONS.items():
+            if column not in existing_columns:
+                connection.execute(statement)
+
+    def _ensure_fts(self, connection: sqlite3.Connection) -> None:
+        existing_columns = [
+            row["name"] for row in connection.execute("PRAGMA table_info(memory_fts)").fetchall()
+        ]
+        rebuild = False
+        if existing_columns and tuple(existing_columns) != FTS_COLUMNS:
+            connection.execute("DROP TABLE memory_fts")
+            rebuild = True
+        elif not existing_columns:
+            count = connection.execute("SELECT COUNT(*) AS count FROM memories").fetchone()["count"]
+            rebuild = count > 0
+
+        connection.executescript(FTS_SCHEMA)
+        if rebuild:
+            rows = connection.execute("SELECT * FROM memories").fetchall()
+            for row in rows:
+                self._replace_fts(connection, dict(row))
 
     def _add_event(
         self,

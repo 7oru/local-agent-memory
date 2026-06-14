@@ -4,7 +4,14 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .models import MEMORY_KINDS, MEMORY_STATUSES, SOURCE_KINDS, Memory
+from .models import (
+    MEMORY_KINDS,
+    MEMORY_PRIVACY_LEVELS,
+    MEMORY_RETENTION_POLICIES,
+    MEMORY_STATUSES,
+    SOURCE_KINDS,
+    Memory,
+)
 from .storage import InvalidTransitionError, MemoryNotFoundError, MemoryRepository
 
 
@@ -54,12 +61,24 @@ class MemoryService:
         content: str,
         *,
         scope: str,
+        title: str | None = None,
+        summary: str | None = None,
         kind: str = "note",
         pin: bool = False,
         status: str | None = None,
         confidence: float = 1.0,
+        salience: float = 0.5,
+        privacy: str = "personal",
+        retention: str = "default",
+        subject: str | None = None,
+        entities: list[str] | None = None,
+        relations: list[dict[str, Any]] | None = None,
         source_kind: str = "manual",
         source_ref: str | None = None,
+        user_id: str | None = None,
+        agent_id: str | None = None,
+        app_id: str | None = None,
+        run_id: str | None = None,
         tags: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
         supersedes_id: str | None = None,
@@ -71,11 +90,23 @@ class MemoryService:
         validated = self._validate_memory_fields(
             {
                 "content": content,
+                "title": title,
+                "summary": summary,
                 "scope": scope,
                 "kind": kind,
                 "status": normalized_status,
                 "confidence": confidence,
+                "salience": salience,
+                "privacy": privacy,
+                "retention": retention,
+                "subject": subject,
+                "entities": entities or [],
+                "relations": relations or [],
                 "source_kind": source_kind,
+                "user_id": user_id,
+                "agent_id": agent_id,
+                "app_id": app_id,
+                "run_id": run_id,
                 "tags": tags or [],
                 "metadata": metadata or {},
             },
@@ -84,11 +115,23 @@ class MemoryService:
         return self.repo.create_memory(
             validated["content"],
             validated["scope"],
+            title=validated["title"],
+            summary=validated["summary"],
             kind=validated["kind"],
             status=validated["status"],
             confidence=validated["confidence"],
+            salience=validated["salience"],
+            privacy=validated["privacy"],
+            retention=validated["retention"],
+            subject=validated["subject"],
+            entities=validated["entities"],
+            relations=validated["relations"],
             source_kind=validated["source_kind"],
             source_ref=source_ref,
+            user_id=validated["user_id"],
+            agent_id=validated["agent_id"],
+            app_id=validated["app_id"],
+            run_id=validated["run_id"],
             tags=validated["tags"],
             metadata=validated["metadata"],
             supersedes_id=supersedes_id,
@@ -217,10 +260,22 @@ class MemoryService:
         new_memory = self.add_memory(
             new_content,
             scope=old.scope,
+            title=old.title,
+            summary=old.summary,
             kind=old.kind,
             confidence=old.confidence,
+            salience=old.salience,
+            privacy=old.privacy,
+            retention=old.retention,
+            subject=old.subject,
+            entities=old.entities,
+            relations=old.relations,
             source_kind=old.source_kind,
             source_ref=source_ref or old.source_ref,
+            user_id=old.user_id,
+            agent_id=old.agent_id,
+            app_id=old.app_id,
+            run_id=old.run_id,
             tags=old.tags,
             metadata={**old.metadata, "supersedes_id": old.id},
             actor=actor,
@@ -245,6 +300,13 @@ class MemoryService:
                 raise ValidationError(f"missing fields: {', '.join(missing)}")
         if "content" in validated:
             validated["content"] = self._validate_content(validated["content"])
+        for field in ("title", "summary", "subject", "user_id", "agent_id", "app_id", "run_id"):
+            if field in validated:
+                validated[field] = self._validate_optional_text(
+                    validated[field],
+                    field=field,
+                    max_length=2_000 if field in {"summary"} else 256,
+                )
         if "scope" in validated:
             validated["scope"] = self._validate_scope(validated["scope"])
         if "kind" in validated:
@@ -253,8 +315,18 @@ class MemoryService:
             validated["status"] = self._validate_status(validated["status"])
         if "confidence" in validated:
             validated["confidence"] = self._validate_confidence(validated["confidence"])
+        if "salience" in validated:
+            validated["salience"] = self._validate_salience(validated["salience"])
+        if "privacy" in validated:
+            validated["privacy"] = self._validate_privacy(validated["privacy"])
+        if "retention" in validated:
+            validated["retention"] = self._validate_retention(validated["retention"])
         if "source_kind" in validated:
             validated["source_kind"] = self._validate_source_kind(validated["source_kind"])
+        if "entities" in validated:
+            validated["entities"] = self._validate_entities(validated["entities"])
+        if "relations" in validated:
+            validated["relations"] = self._validate_relations(validated["relations"])
         if "tags" in validated:
             validated["tags"] = self._validate_tags(validated["tags"])
         if "metadata" in validated:
@@ -269,6 +341,18 @@ class MemoryService:
             raise ValidationError("content is too long")
         if any(pattern.search(normalized) for pattern in SECRET_PATTERNS):
             raise SecretLikeContentError("content looks like a secret or credential")
+        return normalized
+
+    def _validate_optional_text(self, value: Any, *, field: str, max_length: int) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValidationError(f"{field} must be a string")
+        normalized = value.strip()
+        if not normalized:
+            return None
+        if len(normalized) > max_length:
+            raise ValidationError(f"{field} is too long")
         return normalized
 
     def _validate_scope(self, scope: Any) -> str:
@@ -297,10 +381,52 @@ class MemoryService:
             raise ValidationError("confidence must be from 0.0 to 1.0")
         return value
 
+    def _validate_salience(self, salience: Any) -> float:
+        try:
+            value = float(salience)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("salience must be a number from 0.0 to 1.0") from exc
+        if value < 0.0 or value > 1.0:
+            raise ValidationError("salience must be from 0.0 to 1.0")
+        return value
+
+    def _validate_privacy(self, privacy: Any) -> str:
+        if privacy not in MEMORY_PRIVACY_LEVELS:
+            raise ValidationError(f"privacy must be one of: {', '.join(MEMORY_PRIVACY_LEVELS)}")
+        return privacy
+
+    def _validate_retention(self, retention: Any) -> str:
+        if retention not in MEMORY_RETENTION_POLICIES:
+            raise ValidationError(
+                f"retention must be one of: {', '.join(MEMORY_RETENTION_POLICIES)}"
+            )
+        return retention
+
     def _validate_source_kind(self, source_kind: Any) -> str:
         if source_kind not in SOURCE_KINDS:
             raise ValidationError(f"source_kind must be one of: {', '.join(SOURCE_KINDS)}")
         return source_kind
+
+    def _validate_entities(self, entities: Any) -> list[str]:
+        if not isinstance(entities, list) or any(
+            not isinstance(entity, str) for entity in entities
+        ):
+            raise ValidationError("entities must be a list of strings")
+        seen: set[str] = set()
+        normalized: list[str] = []
+        for entity in entities:
+            value = entity.strip()
+            if value and value not in seen:
+                normalized.append(value)
+                seen.add(value)
+        return normalized
+
+    def _validate_relations(self, relations: Any) -> list[dict[str, Any]]:
+        if not isinstance(relations, list) or any(
+            not isinstance(relation, dict) for relation in relations
+        ):
+            raise ValidationError("relations must be a list of objects")
+        return relations
 
     def _validate_tags(self, tags: Any) -> list[str]:
         if not isinstance(tags, list) or any(not isinstance(tag, str) for tag in tags):

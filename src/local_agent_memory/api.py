@@ -17,22 +17,46 @@ from .web import index_html
 class MemoryCreate(BaseModel):
     content: str
     scope: str
+    title: str | None = None
+    summary: str | None = None
     kind: str = "note"
     pin: bool = False
     status: str | None = None
     confidence: float = 1.0
+    salience: float = 0.5
+    privacy: str = "personal"
+    retention: str = "default"
+    subject: str | None = None
+    entities: list[str] = Field(default_factory=list)
+    relations: list[dict[str, Any]] = Field(default_factory=list)
     source_ref: str | None = None
+    user_id: str | None = None
+    agent_id: str | None = None
+    app_id: str | None = None
+    run_id: str | None = None
     tags: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class MemoryPatch(BaseModel):
     content: str | None = None
+    title: str | None = None
+    summary: str | None = None
     scope: str | None = None
     kind: str | None = None
     status: str | None = None
     confidence: float | None = None
+    salience: float | None = None
+    privacy: str | None = None
+    retention: str | None = None
+    subject: str | None = None
+    entities: list[str] | None = None
+    relations: list[dict[str, Any]] | None = None
     source_ref: str | None = None
+    user_id: str | None = None
+    agent_id: str | None = None
+    app_id: str | None = None
+    run_id: str | None = None
     tags: list[str] | None = None
     metadata: dict[str, Any] | None = None
 
@@ -100,12 +124,24 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
             lambda: service.add_memory(
                 payload.content,
                 scope=payload.scope,
+                title=payload.title,
+                summary=payload.summary,
                 kind=payload.kind,
                 pin=payload.pin,
                 status=payload.status,
                 confidence=payload.confidence,
+                salience=payload.salience,
+                privacy=payload.privacy,
+                retention=payload.retention,
+                subject=payload.subject,
+                entities=payload.entities,
+                relations=payload.relations,
                 source_kind="api",
                 source_ref=payload.source_ref,
+                user_id=payload.user_id,
+                agent_id=payload.agent_id,
+                app_id=payload.app_id,
+                run_id=payload.run_id,
                 tags=payload.tags,
                 metadata=payload.metadata,
                 actor="api",

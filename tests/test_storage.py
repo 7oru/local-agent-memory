@@ -20,13 +20,27 @@ class StorageTests(unittest.TestCase):
         memory = self.repo.create_memory(
             "OpenClaw 默认模型是 minimax/MiniMax-M2.5",
             "project:openclaw",
+            title="OpenClaw default model",
+            subject="OpenClaw",
+            entities=["OpenClaw", "MiniMax-M2.5"],
+            relations=[
+                {"subject": "OpenClaw", "predicate": "uses_model", "object": "MiniMax-M2.5"}
+            ],
             kind="fact",
             source_kind="manual",
             source_ref="test",
+            user_id="rick",
+            agent_id="codex",
+            app_id="local-agent-memory",
+            run_id="test-run",
         )
 
         search_results = self.repo.search("OpenClaw 默认模型", scope="project:openclaw")
         self.assertEqual([memory.id], [item.id for item in search_results])
+        self.assertEqual("lam.memory.v1", search_results[0].schema_version)
+        self.assertEqual("OpenClaw", search_results[0].subject)
+        self.assertEqual(["OpenClaw", "MiniMax-M2.5"], search_results[0].entities)
+        self.assertEqual("rick", search_results[0].user_id)
         self.assertEqual("manual", search_results[0].source_kind)
         self.assertIsNotNone(search_results[0].created_at)
         self.assertEqual(
@@ -43,6 +57,7 @@ class StorageTests(unittest.TestCase):
         self.assertEqual([], self.repo.search("OpenClaw", scope="project:openclaw"))
 
         exported = self.repo.export_json()
+        self.assertEqual("lam.memory.v1", exported["schema_version"])
         self.assertEqual(1, len(exported["memories"]))
         self.assertEqual("deleted", exported["memories"][0]["status"])
         self.assertIn("deleted", [event["event_type"] for event in exported["events"]])
@@ -97,6 +112,50 @@ class StorageTests(unittest.TestCase):
         self.assertIn("idx_memories_scope_status_updated", index_names)
         self.assertIn("idx_memories_status_updated", index_names)
         self.assertIn("idx_memory_events_memory_id", index_names)
+
+    def test_initialize_migrates_legacy_memory_rows_to_normalized_schema(self) -> None:
+        legacy_path = Path(self.tmpdir.name) / "legacy.db"
+        with closing(connect(legacy_path)) as connection:
+            connection.executescript(
+                """
+                CREATE TABLE memories (
+                  id TEXT PRIMARY KEY,
+                  content TEXT NOT NULL,
+                  kind TEXT NOT NULL,
+                  scope TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  confidence REAL NOT NULL,
+                  source_kind TEXT NOT NULL,
+                  source_ref TEXT,
+                  valid_from TEXT NOT NULL,
+                  valid_to TEXT,
+                  supersedes_id TEXT,
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL,
+                  tags TEXT NOT NULL DEFAULT '[]',
+                  metadata TEXT NOT NULL DEFAULT '{}'
+                );
+                INSERT INTO memories (
+                  id, content, kind, scope, status, confidence, source_kind, source_ref,
+                  valid_from, created_at, updated_at, tags, metadata
+                )
+                VALUES (
+                  'mem_legacy', 'Legacy transcript note', 'note', 'global', 'active', 1.0,
+                  'import', 'legacy.jsonl', '2026-01-01T00:00:00Z',
+                  '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '[]', '{}'
+                );
+                """
+            )
+            connection.commit()
+
+        migrated = MemoryRepository(legacy_path)
+        migrated.initialize()
+
+        memory = migrated.get_memory("mem_legacy")
+        self.assertEqual("lam.memory.v1", memory.schema_version)
+        self.assertEqual([], memory.entities)
+        self.assertEqual("personal", memory.privacy)
+        self.assertEqual([memory.id], [item.id for item in migrated.search("Legacy")])
 
 
 if __name__ == "__main__":

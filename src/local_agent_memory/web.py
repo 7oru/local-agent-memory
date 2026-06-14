@@ -419,10 +419,28 @@ def index_html() -> str:
         </div>
       </div>
       <div class="detail-section">
+        <div class="section-title">Normalized Schema</div>
+        <div class="kv-grid">
+          <label><span>Title</span><input id="detail-title"></label>
+          <label><span>Subject</span><input id="detail-subject"></label>
+          <label><span>Salience</span><input id="detail-salience" type="number" step="0.01" min="0" max="1"></label>
+          <label><span>Privacy</span><input id="detail-privacy"></label>
+          <label><span>Retention</span><input id="detail-retention"></label>
+          <label><span>Schema</span><input id="detail-schema-version" readonly></label>
+          <label class="span-2"><span>Summary</span><textarea class="compact-textarea" id="detail-summary"></textarea></label>
+          <label class="span-2"><span>Entities</span><input id="detail-entities" placeholder="comma,separated,entities"></label>
+          <label class="span-2"><span>Relations JSON</span><textarea class="mono compact-textarea" id="detail-relations" spellcheck="false"></textarea></label>
+        </div>
+      </div>
+      <div class="detail-section">
         <div class="section-title">Provenance</div>
         <div class="kv-grid">
           <label><span>Source kind</span><input id="detail-source-kind" readonly></label>
           <label class="span-2"><span>Source ref</span><textarea class="compact-textarea mono" id="detail-source-ref"></textarea></label>
+          <label><span>User ID</span><input id="detail-user-id"></label>
+          <label><span>Agent ID</span><input id="detail-agent-id"></label>
+          <label><span>App ID</span><input id="detail-app-id"></label>
+          <label><span>Run ID</span><input id="detail-run-id"></label>
           <label><span>Created</span><input id="detail-created" readonly></label>
           <label><span>Updated</span><input id="detail-updated" readonly></label>
           <label><span>Valid from</span><input id="detail-valid-from" readonly></label>
@@ -549,6 +567,16 @@ def index_html() -> str:
       return parsed;
     }
 
+    function parseRelations(value) {
+      const text = String(value || "").trim();
+      if (!text) return [];
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed) || parsed.some((item) => !item || Array.isArray(item) || typeof item !== "object")) {
+        throw new Error("Relations must be a JSON array of objects");
+      }
+      return parsed;
+    }
+
     async function api(path, options = {}) {
       const response = await fetch(path, {
         headers: { "Content-Type": "application/json" },
@@ -651,8 +679,21 @@ def index_html() -> str:
       $("detail-scope").value = memory.scope;
       $("detail-status").value = memory.status;
       $("detail-confidence").value = memory.confidence;
+      $("detail-schema-version").value = memory.schema_version || "";
+      $("detail-title").value = memory.title || "";
+      $("detail-summary").value = memory.summary || "";
+      $("detail-subject").value = memory.subject || "";
+      $("detail-salience").value = memory.salience ?? 0.5;
+      $("detail-privacy").value = memory.privacy || "personal";
+      $("detail-retention").value = memory.retention || "default";
+      $("detail-entities").value = (memory.entities || []).join(", ");
+      $("detail-relations").value = JSON.stringify(memory.relations || [], null, 2);
       $("detail-source-kind").value = memory.source_kind;
       $("detail-source-ref").value = memory.source_ref || "";
+      $("detail-user-id").value = memory.user_id || "";
+      $("detail-agent-id").value = memory.agent_id || "";
+      $("detail-app-id").value = memory.app_id || "";
+      $("detail-run-id").value = memory.run_id || "";
       $("detail-created").value = memory.created_at;
       $("detail-updated").value = memory.updated_at;
       $("detail-valid-from").value = memory.valid_from || "";
@@ -694,7 +735,19 @@ def index_html() -> str:
         scope: $("detail-scope").value,
         status: $("detail-status").value,
         confidence: Number($("detail-confidence").value),
+        title: $("detail-title").value || null,
+        summary: $("detail-summary").value || null,
+        subject: $("detail-subject").value || null,
+        salience: Number($("detail-salience").value),
+        privacy: $("detail-privacy").value || "personal",
+        retention: $("detail-retention").value || "default",
+        entities: parseTags($("detail-entities").value),
+        relations: parseRelations($("detail-relations").value),
         source_ref: $("detail-source-ref").value || null,
+        user_id: $("detail-user-id").value || null,
+        agent_id: $("detail-agent-id").value || null,
+        app_id: $("detail-app-id").value || null,
+        run_id: $("detail-run-id").value || null,
         tags: parseTags($("detail-tags").value),
         metadata: parseMetadata($("detail-metadata").value)
       };

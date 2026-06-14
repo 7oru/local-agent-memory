@@ -26,6 +26,12 @@ class ServiceTests(unittest.TestCase):
             self.service.add_memory("hello", scope="global", kind="unknown")
         with self.assertRaises(ValidationError):
             self.service.add_memory("hello", scope="global", confidence=1.5)
+        with self.assertRaises(ValidationError):
+            self.service.add_memory("hello", scope="global", salience=-0.1)
+        with self.assertRaises(ValidationError):
+            self.service.add_memory("hello", scope="global", privacy="secret")
+        with self.assertRaises(ValidationError):
+            self.service.add_memory("hello", scope="global", entities=[{"name": "OpenClaw"}])
         with self.assertRaises(SecretLikeContentError):
             self.service.add_memory(
                 "api_key = abcdefghijklmnopqrstuvwxyz123456",
@@ -55,9 +61,11 @@ class ServiceTests(unittest.TestCase):
 
     def test_scope_aware_search_returns_provenance_and_excludes_inactive_by_default(self) -> None:
         global_memory = self.service.add_memory(
-            "OpenClaw 默认模型是 minimax/MiniMax-M2.5",
+            "默认模型是 minimax/MiniMax-M2.5",
             scope="global",
             kind="fact",
+            subject="OpenClaw",
+            entities=["OpenClaw"],
             source_kind="manual",
             source_ref="docs/mvp.md",
         )

@@ -72,13 +72,26 @@ Minimum fields for `memories`:
 | Field | Purpose |
 | --- | --- |
 | `id` | stable memory id |
+| `schema_version` | normalized memory envelope version |
 | `content` | user-facing memory text |
+| `title` | optional short label |
+| `summary` | optional compressed description |
 | `kind` | preference, fact, decision, procedure, task_state, note |
 | `scope` | global, project, agent, session |
 | `status` | active, pinned, archived, expired, superseded, deleted |
 | `confidence` | 0.0 to 1.0 |
+| `salience` | 0.0 to 1.0 retrieval/usefulness hint |
+| `privacy` | public, personal, sensitive |
+| `retention` | ephemeral, default, long_term, permanent |
+| `subject` | optional primary topic or entity |
+| `entities` | JSON array of searchable entity names |
+| `relations` | JSON array of lightweight relationship objects |
 | `source_kind` | manual, cli, api, mcp, session, import |
 | `source_ref` | session id, file path, URL, or command |
+| `user_id` | optional external user/person scope |
+| `agent_id` | optional external agent scope |
+| `app_id` | optional external application scope |
+| `run_id` | optional run/thread/session identifier |
 | `valid_from` | when this memory becomes valid |
 | `valid_to` | optional expiration time |
 | `supersedes_id` | old memory this replaces |
@@ -96,6 +109,7 @@ lam init
 lam serve
 lam mcp
 lam add "..." --scope global --kind preference --pin
+lam add "..." --scope project:foo --subject Foo --entity Foo --salience 0.8
 lam search "..." --scope project:foo
 lam list --scope global --status active
 lam list --scope global --status pinned
@@ -138,7 +152,7 @@ Required:
 ```text
 memory_get_pinned(scope?: string)
 memory_search(query: string, scope?: string, limit?: number)
-memory_add(content: string, scope: string, kind?: string, source_ref?: string)
+memory_add(content: string, scope: string, kind?: string, source_ref?: string, subject?: string, entities?: string[])
 memory_update(id: string, patch: object)
 memory_delete(id: string)
 ```
@@ -149,10 +163,14 @@ Tool responses must include:
 
 - `id`
 - `content`
+- `schema_version`
 - `kind`
 - `scope`
 - `status`
 - `confidence`
+- `salience`
+- `privacy`
+- `retention`
 - `source_kind`
 - `source_ref`
 - `created_at`

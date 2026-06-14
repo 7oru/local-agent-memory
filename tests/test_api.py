@@ -43,6 +43,7 @@ class ApiTests(unittest.TestCase):
             "Add Memory",
             "Supersede",
             "Audit Events",
+            "Normalized Schema",
             "Metadata JSON",
             "Tags",
             "mcpServers",
@@ -104,12 +105,32 @@ class ApiTests(unittest.TestCase):
         created = self.client.post(
             "/memories",
             json={
-                "content": "OpenClaw 默认模型是 minimax/MiniMax-M2.5",
+                "content": "默认模型是 minimax/MiniMax-M2.5",
                 "scope": "project:openclaw",
+                "title": "OpenClaw default model",
+                "subject": "OpenClaw",
+                "entities": ["OpenClaw", "MiniMax-M2.5"],
+                "relations": [
+                    {
+                        "subject": "OpenClaw",
+                        "predicate": "uses_model",
+                        "object": "MiniMax-M2.5",
+                    }
+                ],
+                "salience": 0.9,
+                "privacy": "personal",
+                "retention": "long_term",
+                "user_id": "rick",
                 "kind": "fact",
                 "source_ref": "docs/mvp.md",
             },
         ).json()
+        self.assertEqual("lam.memory.v1", created["schema_version"])
+        self.assertEqual("OpenClaw", created["subject"])
+        self.assertEqual(["OpenClaw", "MiniMax-M2.5"], created["entities"])
+        self.assertEqual(0.9, created["salience"])
+        self.assertEqual("long_term", created["retention"])
+        self.assertEqual("rick", created["user_id"])
 
         search_response = self.client.post(
             "/search",

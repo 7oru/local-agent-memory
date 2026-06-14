@@ -19,7 +19,8 @@ experiments. It is not a multi-user SaaS, a cloud sync service, or a secret stor
 - Supports scoped memories such as `global`, `project:<name>`, `agent:<name>`,
   and `session:<id>`.
 - Separates pinned memory from searchable memory.
-- Preserves provenance fields such as source, confidence, status, and timestamps.
+- Preserves a normalized memory envelope with provenance, subject/entity hints,
+  salience, privacy, retention, confidence, status, and timestamps.
 - Provides CLI for init, serve, add, search, pin, unpin, update, delete, export,
   and MCP.
 - Serves a local HTTP API and minimal review UI.
@@ -94,11 +95,35 @@ like ordinary CLI-authored notes:
 uv run lam add "Kimi reviewer verdict: practical MVP ready" \
   --scope project:local-agent-memory \
   --kind task_state \
+  --title "Kimi MVP review" \
+  --subject local-agent-memory \
+  --entity Kimi \
+  --entity local-agent-memory \
+  --relation-json '{"subject":"Kimi","predicate":"reviewed","object":"local-agent-memory"}' \
+  --salience 0.8 \
+  --retention long_term \
   --source-kind import \
   --source-ref "kimi-api:moonshot-v1-128k" \
   --metadata model=moonshot-v1-128k \
   --metadata rounds=5
 ```
+
+## Normalized Memory Schema
+
+The database keeps `content` as the canonical human-readable memory text, while
+the surrounding record follows a longer normalized envelope that is common in
+agent memory systems:
+
+| Area | Fields |
+| --- | --- |
+| Identity | `id`, `schema_version`, `kind`, `scope`, optional `user_id`, `agent_id`, `app_id`, `run_id` |
+| Meaning | `content`, optional `title`, `summary`, `subject`, `entities`, `relations`, `tags`, `metadata` |
+| Retrieval | `status`, `confidence`, `salience`, `privacy`, `retention` |
+| Provenance | `source_kind`, `source_ref`, `valid_from`, `valid_to`, `supersedes_id`, `created_at`, `updated_at` |
+
+Full unmodified chat logs should stay as source artifacts or import metadata.
+Durable memory rows should be smaller normalized assertions, preferences,
+decisions, procedures, or task states extracted from those logs.
 
 ## Lightweight Local Deployment
 

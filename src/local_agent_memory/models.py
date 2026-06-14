@@ -10,6 +10,9 @@ ACTIVE_RETRIEVAL_STATUSES = ("active", "pinned")
 INACTIVE_STATUSES = ("archived", "expired", "superseded", "deleted")
 MEMORY_KINDS = ("preference", "fact", "decision", "procedure", "task_state", "note")
 MEMORY_STATUSES = ACTIVE_RETRIEVAL_STATUSES + INACTIVE_STATUSES
+MEMORY_SCHEMA_VERSION = "lam.memory.v1"
+MEMORY_PRIVACY_LEVELS = ("public", "personal", "sensitive")
+MEMORY_RETENTION_POLICIES = ("ephemeral", "default", "long_term", "permanent")
 SOURCE_KINDS = ("manual", "cli", "api", "mcp", "session", "import")
 
 
@@ -30,13 +33,26 @@ def loads_json(value: str | None, default: Any) -> Any:
 @dataclass(frozen=True)
 class Memory:
     id: str
+    schema_version: str
     content: str
+    title: str | None
+    summary: str | None
     kind: str
     scope: str
     status: str
     confidence: float
+    salience: float
+    privacy: str
+    retention: str
+    subject: str | None
+    entities: list[str]
+    relations: list[dict[str, Any]]
     source_kind: str
     source_ref: str | None
+    user_id: str | None
+    agent_id: str | None
+    app_id: str | None
+    run_id: str | None
     valid_from: str
     valid_to: str | None
     supersedes_id: str | None
@@ -51,13 +67,26 @@ class Memory:
         keys = set(row.keys())
         return cls(
             id=row["id"],
+            schema_version=_row_value(row, keys, "schema_version", MEMORY_SCHEMA_VERSION),
             content=row["content"],
+            title=_row_value(row, keys, "title"),
+            summary=_row_value(row, keys, "summary"),
             kind=row["kind"],
             scope=row["scope"],
             status=row["status"],
             confidence=float(row["confidence"]),
+            salience=float(_row_value(row, keys, "salience", 0.5)),
+            privacy=_row_value(row, keys, "privacy", "personal"),
+            retention=_row_value(row, keys, "retention", "default"),
+            subject=_row_value(row, keys, "subject"),
+            entities=list(loads_json(_row_value(row, keys, "entities"), [])),
+            relations=list(loads_json(_row_value(row, keys, "relations"), [])),
             source_kind=row["source_kind"],
             source_ref=row["source_ref"],
+            user_id=_row_value(row, keys, "user_id"),
+            agent_id=_row_value(row, keys, "agent_id"),
+            app_id=_row_value(row, keys, "app_id"),
+            run_id=_row_value(row, keys, "run_id"),
             valid_from=row["valid_from"],
             valid_to=row["valid_to"],
             supersedes_id=row["supersedes_id"],
@@ -76,13 +105,26 @@ class Memory:
             content_truncated = True
         data = {
             "id": self.id,
+            "schema_version": self.schema_version,
             "content": content,
+            "title": self.title,
+            "summary": self.summary,
             "kind": self.kind,
             "scope": self.scope,
             "status": self.status,
             "confidence": self.confidence,
+            "salience": self.salience,
+            "privacy": self.privacy,
+            "retention": self.retention,
+            "subject": self.subject,
+            "entities": self.entities,
+            "relations": self.relations,
             "source_kind": self.source_kind,
             "source_ref": self.source_ref,
+            "user_id": self.user_id,
+            "agent_id": self.agent_id,
+            "app_id": self.app_id,
+            "run_id": self.run_id,
             "valid_from": self.valid_from,
             "valid_to": self.valid_to,
             "supersedes_id": self.supersedes_id,
@@ -128,3 +170,10 @@ class MemoryEvent:
             "data": self.data,
             "created_at": self.created_at,
         }
+
+
+def _row_value(row: Row, keys: set[str], key: str, default: Any = None) -> Any:
+    if key not in keys:
+        return default
+    value = row[key]
+    return default if value is None else value
