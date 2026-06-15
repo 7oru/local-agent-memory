@@ -61,7 +61,7 @@ class MemoryPatch(BaseModel):
     metadata: dict[str, Any] | None = None
 
     def patch_dict(self) -> dict[str, Any]:
-        return self.model_dump(exclude_none=True)
+        return self.model_dump(exclude_unset=True)
 
 
 class SearchRequest(BaseModel):

@@ -148,6 +148,58 @@ class ApiTests(unittest.TestCase):
         self.assertEqual("deleted", export["memories"][0]["status"])
         self.assertIn("deleted", [event["event_type"] for event in export["events"]])
 
+    def test_http_patch_can_clear_nullable_detail_fields(self) -> None:
+        created = self.client.post(
+            "/memories",
+            json={
+                "content": "Detail edits can clear stale optional metadata",
+                "scope": "project:local-agent-memory",
+                "title": "stale title",
+                "summary": "stale summary",
+                "subject": "stale subject",
+                "source_ref": "docs/old.md",
+                "user_id": "old-user",
+                "agent_id": "old-agent",
+                "app_id": "old-app",
+                "run_id": "old-run",
+            },
+        ).json()
+
+        response = self.client.patch(
+            f"/memories/{created['id']}",
+            json={
+                "title": None,
+                "summary": None,
+                "subject": None,
+                "source_ref": None,
+                "user_id": None,
+                "agent_id": None,
+                "app_id": None,
+                "run_id": None,
+            },
+        )
+
+        self.assertEqual(200, response.status_code)
+        updated = response.json()
+        for field in (
+            "title",
+            "summary",
+            "subject",
+            "source_ref",
+            "user_id",
+            "agent_id",
+            "app_id",
+            "run_id",
+        ):
+            self.assertIsNone(updated[field])
+
+        export = self.client.get("/export").json()
+        exported = export["memories"][0]
+        self.assertEqual(created["id"], exported["id"])
+        self.assertIsNone(exported["title"])
+        self.assertIsNone(exported["source_ref"])
+        self.assertIsNone(exported["user_id"])
+
     def test_http_search_can_return_limited_content_for_fast_tables(self) -> None:
         long_content = "Kimi reviewer verdict: " + ("practical MVP ready " * 80)
         created = self.client.post(
