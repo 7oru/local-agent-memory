@@ -247,19 +247,21 @@ class MemoryRepository:
         scope: str | None = None,
         status: str | None = None,
         include_inactive: bool = False,
-        limit: int = 100,
+        limit: int | None = 100,
     ) -> list[Memory]:
         self.initialize()
         where, params = self._filters(scope=scope, status=status, include_inactive=include_inactive)
+        limit_clause = "" if limit is None else "LIMIT ?"
+        query_params = params if limit is None else [*params, limit]
         with closing(connect(self.db_path)) as connection:
             rows = connection.execute(
                 f"""
                 SELECT * FROM memories
                 {where}
                 ORDER BY updated_at DESC, created_at DESC
-                LIMIT ?
+                {limit_clause}
                 """,
-                [*params, limit],
+                query_params,
             ).fetchall()
         return [Memory.from_row(row) for row in rows]
 
@@ -455,7 +457,10 @@ class MemoryRepository:
     def export_json(self) -> dict[str, Any]:
         return {
             "schema_version": MEMORY_SCHEMA_VERSION,
-            "memories": [memory.to_dict() for memory in self.list_memories(include_inactive=True)],
+            "memories": [
+                memory.to_dict()
+                for memory in self.list_memories(include_inactive=True, limit=None)
+            ],
             "events": [event.to_dict() for event in self.list_events()],
         }
 

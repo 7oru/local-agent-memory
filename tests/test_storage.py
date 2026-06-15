@@ -62,6 +62,18 @@ class StorageTests(unittest.TestCase):
         self.assertEqual("deleted", exported["memories"][0]["status"])
         self.assertIn("deleted", [event["event_type"] for event in exported["events"]])
 
+    def test_export_json_includes_more_than_default_list_limit(self) -> None:
+        created_ids = {
+            self.repo.create_memory(f"backup memory {index}", "global").id
+            for index in range(101)
+        }
+
+        self.assertEqual(100, len(self.repo.list_memories(include_inactive=True)))
+
+        exported = self.repo.export_json()
+        exported_ids = {memory["id"] for memory in exported["memories"]}
+        self.assertEqual(created_ids, exported_ids)
+
     def test_pin_unpin_persistence_idempotency_and_audit_events(self) -> None:
         memory = self.repo.create_memory("用户偏好：个人 wiki 笔记默认写中文", "global")
 
